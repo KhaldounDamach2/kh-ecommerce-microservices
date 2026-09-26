@@ -1,0 +1,6 @@
+# Local secrets across all services
+**/application-local.yaml
+**/application-local-*.yaml
+.env
+.env.*
+!.env.example
