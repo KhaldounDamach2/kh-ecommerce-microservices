@@ -1,10 +1,10 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const dashboardByRole = {
-  CUSTOMER: '/dashboard/customer',
-  SELLER: '/dashboard/seller',
-  ADMIN: '/dashboard/admin',
+  CUSTOMER: "/dashboard/customer",
+  SELLER: "/dashboard/seller",
+  ADMIN: "/dashboard/admin",
 };
 
 export default function Navbar() {
@@ -13,7 +13,7 @@ export default function Navbar() {
 
   async function handleLogout() {
     await logout();
-    navigate('/login');
+    navigate("/login");
   }
 
   return (
@@ -31,13 +31,30 @@ export default function Navbar() {
         ) : (
           <>
             <span>{user.email}</span>
-            <span className="rounded bg-gray-100 px-2 py-1 text-sm">
+            <span
+              className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                user.role === "CUSTOMER"
+                  ? "bg-blue-100 text-blue-800"
+                  : user.role === "SELLER"
+                    ? "bg-green-100 text-green-800"
+                    : "bg-red-100 text-red-800"
+              }`}
+            >
               {user.role}
             </span>
             {dashboardByRole[user.role] && (
-              <Link to={dashboardByRole[user.role]}>Dashboard</Link>
+              <Link
+                to={dashboardByRole[user.role]}
+                className="hover:text-blue-600"
+              >
+                Dashboard
+              </Link>
             )}
-            <button type="button" onClick={handleLogout}>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="border border-gray-300 px-3 py-1 rounded hover:bg-gray-100"
+            >
               Logout
             </button>
           </>

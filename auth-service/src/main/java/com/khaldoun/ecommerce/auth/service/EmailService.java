@@ -3,6 +3,7 @@ package com.khaldoun.ecommerce.auth.service;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 
+import org.springframework.mail.MailException;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -36,7 +37,12 @@ public class EmailService {
     public void sendWelcomeEmail(String toEmail) {
         String html = "<h1>Welcome!</h1>"
                 + "<p>Your email is confirmed and your account is ready to use.</p>";
-        sendHtmlEmail(toEmail, "Welcome to our store", html);
+        try {
+            sendHtmlEmail(toEmail, "Welcome to our store", html);
+        } catch (MailException exception) {
+            // Non-critical: confirmation already succeeded, don't fail the request/transaction over this
+            log.warn("Failed to send welcome email to {}: {}", toEmail, exception.getMessage());
+        }
     }
 
     private void sendHtmlEmail(String toEmail, String subject, String html) {
