@@ -2,16 +2,25 @@ import { Link } from "react-router-dom";
 
 export default function Home() {
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-4">Welcome to E-Commerce</h1>
-      <p className="text-gray-700">
-        A platform for discovering and managing your online shopping experience.
+    <div className="max-w-2xl mx-auto py-16 text-center">
+      <h1 className="text-3xl font-bold mb-4">
+        E-Commerce Microservices Platform
+      </h1>
+      <p className="text-gray-700 mb-8">
+        A modern platform for discovering, buying, and managing products through
+        connected services.
       </p>
-      <div className="mt-4 flex gap-4">
-        <Link to="/register" className="text-blue-600 hover:underline">
-          Register
+      <div className="flex justify-center gap-4">
+        <Link
+          to="/register"
+          className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+        >
+          Get Started
         </Link>
-        <Link to="/login" className="text-blue-600 hover:underline">
+        <Link
+          to="/login"
+          className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+        >
           Login
         </Link>
       </div>
