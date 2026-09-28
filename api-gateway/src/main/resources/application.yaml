@@ -13,14 +13,21 @@ spring:
               enabled: true # auto-create routes from Eureka service names
               lower-case-service-id: true
           routes:
-            # Example placeholder route — will point to auth-service later
-            - id: auth-service
+            # ============ AUTH SERVICE ============
+            - id: auth-service-route
               uri: lb://auth-service # lb:// = load-balanced via Eureka
               predicates:
                 - Path=/api/auth/**
               filters:
                 - StripPrefix=1 # removes /api before forwarding
 
+            # ============ PRODUCT SERVICE ============
+            - id: product-service-route
+              uri: lb://product-service
+              predicates:
+                - Path=/api/products/**
+              filters:
+                - StripPrefix=1
 eureka:
   client:
     service-url:
@@ -43,5 +50,9 @@ management:
 
 logging:
   level:
-    org.springframework.cloud.gateway: INFO
-    com.netflix.discovery: OFF
+    "[org.springframework.cloud.gateway]": INFO
+    "[com.netflix.discovery]": OFF
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:change-me-in-prod-please-use-a-long-random-string-min-32-chars}
