@@ -56,7 +56,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public Page<ProductSummaryResponse> getMyProducts(Long sellerId, Pageable pageable) {
-        return productRepository.findBySellerId(sellerId, pageable)
+        return productRepository.findBySellerIdAndActiveTrue(sellerId, pageable)
                 .map(productMapper::toSummaryResponse);
     }
 

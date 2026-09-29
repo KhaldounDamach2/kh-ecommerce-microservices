@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import * as authApi from "../api/auth";
 import { setAccessToken } from "../api/axios";
+import { setAccessToken as setProductsAccessToken } from "../api/productsAxios";
 
 const AuthContext = createContext(null);
 
@@ -21,6 +22,7 @@ export const AuthProvider = ({ children }) => {
       .refresh(storedRefreshToken)
       .then((resp) => {
         setAccessToken(resp.accessToken);
+        setProductsAccessToken(resp.accessToken);
         setAccessTokenState(resp.accessToken);
         setUser(resp.user);
         localStorage.setItem("refreshToken", resp.refreshToken);
@@ -28,6 +30,7 @@ export const AuthProvider = ({ children }) => {
       .catch(() => {
         localStorage.removeItem("refreshToken");
         setAccessToken(null);
+        setProductsAccessToken(null);
         setAccessTokenState(null);
       })
       .finally(() => {
@@ -39,6 +42,7 @@ export const AuthProvider = ({ children }) => {
     const resp = await authApi.login({ email, password });
     localStorage.setItem("refreshToken", resp.refreshToken);
     setAccessToken(resp.accessToken);
+    setProductsAccessToken(resp.accessToken);
     setAccessTokenState(resp.accessToken);
     setUser(resp.user);
     return resp.user;
@@ -63,6 +67,7 @@ export const AuthProvider = ({ children }) => {
     }
     localStorage.removeItem("refreshToken");
     setAccessToken(null);
+    setProductsAccessToken(null);
     setAccessTokenState(null);
     setUser(null);
   };
