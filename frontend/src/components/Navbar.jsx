@@ -21,6 +21,9 @@ export default function Navbar() {
       <Link to="/" className="font-semibold">
         E-Commerce
       </Link>
+      <Link to="/products" className="text-gray-700 hover:text-blue-600">
+        Products
+      </Link>
 
       <div className="flex items-center gap-4">
         {!isAuthenticated ? (
@@ -42,6 +45,14 @@ export default function Navbar() {
             >
               {user.role}
             </span>
+            {user.role === "SELLER" && (
+              <Link
+                to="/seller/products"
+                className="text-gray-700 hover:text-blue-600"
+              >
+                My Products
+              </Link>
+            )}
             {dashboardByRole[user.role] && (
               <Link
                 to={dashboardByRole[user.role]}
