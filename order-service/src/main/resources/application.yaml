@@ -1,14 +1,14 @@
 server:
-  port: 8083
+  port: 8084
 
 spring:
   application:
-    name: product-service
+    name: order-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5434/product_db
-    username: product_user
-    password: product_pass
+    url: jdbc:postgresql://localhost:5435/order_db
+    username: order_user
+    password: order_pass
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -34,6 +34,12 @@ eureka:
   instance:
     prefer-ip-address: true
 
+# Feign client to product-service
+app:
+  services:
+    product-service:
+      name: product-service # resolves via Eureka
+
 management:
   endpoints:
     web:
@@ -42,5 +48,6 @@ management:
 
 logging:
   level:
-    '[org.springframework.security]': INFO
-    '[com.netflix.discovery]': OFF
+    org.springframework.security: INFO
+    com.netflix.discovery: OFF
+    com.khaldoun.ecommerce.order.client: DEBUG
