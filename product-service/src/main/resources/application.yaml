@@ -42,5 +42,5 @@ management:
 
 logging:
   level:
-    org.springframework.security: INFO
-    com.netflix.discovery: OFF
+    '[org.springframework.security]': INFO
+    '[com.netflix.discovery]': OFF
