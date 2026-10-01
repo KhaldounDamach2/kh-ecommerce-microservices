@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useCart } from "../context/CartContext";
 
 const dashboardByRole = {
   CUSTOMER: "/dashboard/customer",
@@ -9,6 +10,7 @@ const dashboardByRole = {
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
+  const { totalItems } = useCart();
   const navigate = useNavigate();
 
   async function handleLogout() {
@@ -23,6 +25,9 @@ export default function Navbar() {
       </Link>
       <Link to="/products" className="text-gray-700 hover:text-blue-600">
         Products
+      </Link>
+      <Link to="/cart" className="text-gray-700 hover:text-blue-600">
+        Cart {totalItems > 0 ? `(${totalItems})` : ""}
       </Link>
 
       <div className="flex items-center gap-4">
@@ -46,11 +51,27 @@ export default function Navbar() {
               {user.role}
             </span>
             {user.role === "SELLER" && (
+              <>
+                <Link
+                  to="/seller/products"
+                  className="text-gray-700 hover:text-blue-600"
+                >
+                  My Products
+                </Link>
+                <Link
+                  to="/seller/orders"
+                  className="text-gray-700 hover:text-blue-600"
+                >
+                  Incoming Orders
+                </Link>
+              </>
+            )}
+            {user.role === "CUSTOMER" && (
               <Link
-                to="/seller/products"
+                to="/orders/mine"
                 className="text-gray-700 hover:text-blue-600"
               >
-                My Products
+                My Orders
               </Link>
             )}
             {dashboardByRole[user.role] && (

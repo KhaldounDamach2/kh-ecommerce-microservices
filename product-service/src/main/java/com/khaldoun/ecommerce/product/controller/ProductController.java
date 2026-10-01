@@ -1,5 +1,6 @@
 package com.khaldoun.ecommerce.product.controller;
 
+import com.khaldoun.ecommerce.product.dto.AdjustStockRequest;
 import com.khaldoun.ecommerce.product.dto.CreateProductRequest;
 import com.khaldoun.ecommerce.product.dto.ProductResponse;
 import com.khaldoun.ecommerce.product.dto.ProductSummaryResponse;
@@ -16,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -92,6 +94,16 @@ public class ProductController {
             @RequestHeader("X-User-Id") Long userId,
             @RequestHeader("X-User-Role") String userRole) {
         productService.deleteProduct(id, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // Internal endpoint — no role check. Gateway/network isolation protects
+    // external access. Called by order-service to adjust stock.
+    @PatchMapping("/{id}/stock")
+    public ResponseEntity<Void> adjustStock(
+            @PathVariable Long id,
+            @Valid @RequestBody AdjustStockRequest request) {
+        productService.adjustStock(id, request.quantity(), request.operation());
         return ResponseEntity.noContent().build();
     }
 

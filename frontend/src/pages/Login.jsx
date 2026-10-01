@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,8 +17,11 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const user = await login(email, password);
-      navigate(`/dashboard/${user.role.toLowerCase()}`);
+      const loggedUser = await login(email, password);
+      const returnTo = searchParams.get("returnTo");
+      const destination =
+        returnTo || `/dashboard/${loggedUser.role.toLowerCase()}`;
+      navigate(destination, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || err.message);
     } finally {

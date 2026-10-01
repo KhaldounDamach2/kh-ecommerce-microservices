@@ -15,6 +15,11 @@ import ProductDetail from "./pages/ProductDetail.jsx";
 import MyProducts from "./pages/seller/MyProducts.jsx";
 import NewProduct from "./pages/seller/NewProduct.jsx";
 import EditProduct from "./pages/seller/EditProduct.jsx";
+import Cart from "./pages/Cart.jsx";
+import Checkout from "./pages/Checkout.jsx";
+import MyOrders from "./pages/orders/MyOrders.jsx";
+import OrderDetail from "./pages/orders/OrderDetail.jsx";
+import IncomingOrders from "./pages/seller/IncomingOrders.jsx";
 
 function App() {
   return (
@@ -73,6 +78,39 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["SELLER"]}>
               <EditProduct />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/cart" element={<Cart />} />
+        <Route
+          path="/checkout"
+          element={
+            <ProtectedRoute allowedRoles={["CUSTOMER"]}>
+              <Checkout />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/orders/mine"
+          element={
+            <ProtectedRoute allowedRoles={["CUSTOMER"]}>
+              <MyOrders />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/orders/:id"
+          element={
+            <ProtectedRoute>
+              <OrderDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/seller/orders"
+          element={
+            <ProtectedRoute allowedRoles={["SELLER"]}>
+              <IncomingOrders />
             </ProtectedRoute>
           }
         />
