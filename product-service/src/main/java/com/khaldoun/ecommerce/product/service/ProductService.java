@@ -6,6 +6,7 @@ import com.khaldoun.ecommerce.product.dto.ProductResponse;
 import com.khaldoun.ecommerce.product.dto.ProductSummaryResponse;
 import com.khaldoun.ecommerce.product.dto.UpdateProductRequest;
 import com.khaldoun.ecommerce.product.exception.InvalidPriceException;
+import com.khaldoun.ecommerce.product.exception.InsufficientStockException;
 import com.khaldoun.ecommerce.product.exception.NotProductOwnerException;
 import com.khaldoun.ecommerce.product.exception.ProductNotFoundException;
 import com.khaldoun.ecommerce.product.mapper.ProductMapper;
@@ -90,6 +91,25 @@ public class ProductService {
         product.setActive(false);
         productRepository.save(product);
         log.info("Deleted product with id {} for seller {}", id, sellerId);
+    }
+
+    @Transactional
+    public void adjustStock(Long productId, Integer quantity, String operation) {
+        Product product = productRepository.findByIdAndActiveTrue(productId)
+                .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + productId));
+
+        int delta = "DECREMENT".equalsIgnoreCase(operation) ? -quantity : quantity;
+        int newStock = product.getStock() + delta;
+
+        if (newStock < 0) {
+            throw new InsufficientStockException(
+                    "Cannot decrement stock below zero for product: " + product.getName());
+        }
+
+        product.setStock(newStock);
+        productRepository.save(product);
+        log.info("Stock adjusted for product {}: {} -> {} ({})",
+                productId, product.getStock() - delta, newStock, operation);
     }
 
     @Transactional(readOnly = true)

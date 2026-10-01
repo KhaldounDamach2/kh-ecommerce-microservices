@@ -1,12 +1,18 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getProduct } from "../api/products";
+import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function ProductDetail() {
   const { id } = useParams();
+  const { addItem } = useCart();
+  const { isAuthenticated } = useAuth();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const [added, setAdded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,6 +116,68 @@ export default function ProductDetail() {
           <p className="text-gray-700 leading-relaxed mb-6">
             {product.description ?? "No description available."}
           </p>
+          {product.active !== false && inStock ? (
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Quantity
+              </label>
+              <div className="flex items-center gap-3 mb-4">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setQuantity((current) => Math.max(1, current - 1))
+                  }
+                  disabled={quantity <= 1}
+                  className="bg-gray-200 text-gray-800 px-3 py-2 rounded-md hover:bg-gray-300 disabled:opacity-50"
+                  aria-label="Decrease quantity"
+                >
+                  -
+                </button>
+                <span className="min-w-8 text-center" aria-live="polite">
+                  {quantity}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setQuantity((current) =>
+                      Math.min(Number(product.stock), current + 1),
+                    )
+                  }
+                  disabled={quantity >= Number(product.stock)}
+                  className="bg-gray-200 text-gray-800 px-3 py-2 rounded-md hover:bg-gray-300 disabled:opacity-50"
+                  aria-label="Increase quantity"
+                >
+                  +
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  addItem(product, quantity);
+                  setAdded(true);
+                  setTimeout(() => setAdded(false), 2000);
+                }}
+                disabled={added}
+                className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {added ? "Added ✓" : "Add to Cart"}
+              </button>
+              {!isAuthenticated && (
+                <p className="text-xs text-gray-500 mt-2">
+                  You'll be asked to log in at checkout.
+                </p>
+              )}
+              {added && (
+                <p className="text-sm text-green-700 mt-2" role="status">
+                  <Link to="/cart" className="underline">
+                    View cart →
+                  </Link>
+                </p>
+              )}
+            </div>
+          ) : product.active !== false && !inStock ? (
+            <p className="text-red-600 font-medium mb-6">Out of Stock</p>
+          ) : null}
           <p className="text-sm text-gray-500">
             Sold by seller #{product.sellerId ?? "Unknown"}
           </p>

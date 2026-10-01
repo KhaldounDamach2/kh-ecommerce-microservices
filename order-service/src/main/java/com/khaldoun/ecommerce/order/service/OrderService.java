@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.khaldoun.ecommerce.order.client.ProductClient;
+import com.khaldoun.ecommerce.order.client.dto.AdjustStockRequest;
 import com.khaldoun.ecommerce.order.client.dto.ProductClientResponse;
 import com.khaldoun.ecommerce.order.domain.Order;
 import com.khaldoun.ecommerce.order.domain.OrderItem;
@@ -92,6 +93,19 @@ public class OrderService {
         items.forEach(order::addItem);
 
         Order saved = orderRepository.save(order);
+        // Stock decrement is best-effort. If it fails, we log and continue —
+        // the order is already placed. A production system would use the SAGA
+        // pattern with compensating transactions.
+        for (OrderItem item : saved.getItems()) {
+            try {
+                productClient.adjustStock(
+                        item.getProductId(),
+                        new AdjustStockRequest(item.getQuantity(), "DECREMENT"));
+            } catch (FeignException exception) {
+                log.error("Failed to decrement stock for product {} (order {}): {}",
+                        item.getProductId(), saved.getId(), exception.getMessage());
+            }
+        }
         log.info("Placed order {} for customer {}", saved.getId(), customerId);
         return orderMapper.toOrderResponse(saved);
     }
