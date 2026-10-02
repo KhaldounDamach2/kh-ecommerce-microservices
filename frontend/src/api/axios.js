@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-  baseURL: "http://localhost:8081",
+  baseURL: "/api/auth",
   timeout: 10000,
   headers: { "Content-Type": "application/json" },
 });
@@ -20,12 +20,7 @@ const clearAuthAndRedirect = () => {
   window.location.href = "/login";
 };
 
-const NO_REFRESH_PATHS = [
-  "/auth/login",
-  "/auth/register",
-  "/auth/refresh",
-  "/auth/confirm",
-];
+const NO_REFRESH_PATHS = ["/login", "/register", "/refresh", "/confirm"];
 
 let refreshPromise = null;
 
@@ -67,8 +62,8 @@ axiosInstance.interceptors.response.use(
     originalRequest._retry = true;
 
     if (!refreshPromise) {
-      refreshPromise = axios
-        .post("http://localhost:8081/auth/refresh", {
+      refreshPromise = axiosInstance
+        .post("/refresh", {
           refreshToken: storedRefreshToken,
         })
         .then((response) => {

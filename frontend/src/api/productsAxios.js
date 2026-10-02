@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const productsAxios = axios.create({
-  baseURL: "http://localhost:8080/api",
+  baseURL: "/api",
   timeout: 10000,
   headers: { "Content-Type": "application/json" },
 });
