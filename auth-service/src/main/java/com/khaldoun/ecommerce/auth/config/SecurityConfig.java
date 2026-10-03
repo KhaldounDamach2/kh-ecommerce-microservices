@@ -45,7 +45,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST,
                                 "/auth/register", "/auth/login", "/auth/confirm", "/auth/refresh", "/auth/logout")
                         .permitAll()
-                        .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/info")
+                        .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/info", "/actuator/prometheus")
                         .permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
