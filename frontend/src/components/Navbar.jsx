@@ -10,10 +10,11 @@ const dashboardByRole = {
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
-  const { totalItems } = useCart();
+  const { totalItems, clearCart } = useCart();
   const navigate = useNavigate();
 
   async function handleLogout() {
+    clearCart();
     await logout();
     navigate("/login");
   }
