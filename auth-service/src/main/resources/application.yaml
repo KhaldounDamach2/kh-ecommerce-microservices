@@ -50,7 +50,7 @@ eureka:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:change-me-in-prod-please-use-a-long-random-string-min-32-chars}
+    secret: ${JWT_SECRET}
     access-token-expiration-ms: 900000
     refresh-token-expiration-ms: 604800000
   frontend:
