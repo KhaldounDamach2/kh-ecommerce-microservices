@@ -143,6 +143,19 @@ docker compose down -v
 
 ---
 
+## 📊 Monitoring
+
+Prometheus scrapes metrics from all 5 Spring Boot services; Grafana visualizes them.
+
+| Component | Purpose | URL |
+|---|---|---|
+| **Prometheus** | Metrics collection, time-series storage (15s scrape, 15d retention) | http://localhost:9090 |
+| **Grafana** | Dashboards & visualization (provisioned Prometheus datasource) | http://localhost:3000 |
+
+Every service exposes `/actuator/prometheus` via Micrometer. Prometheus discovers targets by Docker container name (`eureka-server:8761`, `api-gateway:8080`, `auth-service:8081`, `product-service:8083`, `order-service:8084`).
+
+**Recommended dashboard:** import Grafana dashboard ID `4701` (*JVM (Micrometer)*) via **Dashboards → New → Import**.
+
 ## 🔐 Authentication & Authorization
 
 **JWT validated at the API Gateway** — single point of auth.
@@ -246,6 +259,8 @@ docker compose down -v
 - Docker + Docker Compose
 - Nginx (frontend serving + reverse proxy)
 - Multi-stage Docker builds (JDK → JRE)
+- Prometheus + Micrometer (metrics collection)
+- Grafana (dashboards & visualization)
 
 ---
 
@@ -312,12 +327,13 @@ kh-ecommerce-microservices/
 8. **Return-to-login flow** — post-login redirect back to intended page
 9. **Multi-stage Docker builds** — small runtime images (JRE only)
 10. **12-factor secrets** — env vars in Docker, gitignored local configs in dev
+11. **Provisioned observability** — Prometheus scrape config and Grafana datasource are committed as files, not clicked through a UI; `docker compose up` yields a working monitoring stack.
 
 ---
 
 ## 🚧 Roadmap
 
-- [ ] Prometheus + Grafana observability
+- [x] Prometheus + Grafana observability
 - [ ] Cloud deployment (Oracle Cloud free tier)
 - [ ] GitHub Actions CI/CD
 - [ ] Kafka event bus + notification-service
