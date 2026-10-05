@@ -13,17 +13,31 @@ A production-shaped e-commerce platform built with **Spring Boot 4 + Spring Clou
 
 ## 📸 Screenshots
 
-| Home                                  | Products                                      | Product Detail                                    |
-| ------------------------------------- | --------------------------------------------- | ------------------------------------------------- |
-| ![Home](docs/screenshots/01-home.png) | ![Products](docs/screenshots/02-products.png) | ![Detail](docs/screenshots/03-product-detail.png) |
+### Customer Flow
 
-| Cart                                  | Checkout                                      | My Orders                                    |
-| ------------------------------------- | --------------------------------------------- | -------------------------------------------- |
-| ![Cart](docs/screenshots/04-cart.png) | ![Checkout](docs/screenshots/05-checkout.png) | ![Orders](docs/screenshots/06-my-orders.png) |
+| Home | Products | Product Detail |
+|---|---|---|
+| ![Home](docs/screenshots/01-home.png) | ![Products](docs/screenshots/10-products.png) | ![Detail](docs/screenshots/03-product-details.png) |
 
-| Seller Products                                    | Incoming Orders                                      | Eureka Dashboard                          |
-| -------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------- |
-| ![Seller](docs/screenshots/08-seller-products.png) | ![Incoming](docs/screenshots/09-incoming-orders.png) | ![Eureka](docs/screenshots/10-eureka.png) |
+| Cart | Checkout | My Orders |
+|---|---|---|
+| ![Cart](docs/screenshots/07-cart.png) | ![Checkout](docs/screenshots/08-checkout.png) | ![Orders](docs/screenshots/09-my-orders.png) |
+
+### Seller Flow
+
+| Seller Products | Product Edit | Order Details |
+|---|---|---|
+| ![Seller](docs/screenshots/02-seller-products.png) | ![Edit](docs/screenshots/05-product-edit.png) | ![Order](docs/screenshots/04-order-details.png) |
+
+| Product Status | | |
+|---|---|---|
+| ![Status](docs/screenshots/06-seller-product-status.png) | | |
+
+### Infrastructure & Observability
+
+| Eureka Dashboard | Grafana (JVM Metrics) | Prometheus Targets |
+|---|---|---|
+| ![Eureka](docs/screenshots/12-eureka.png) | ![Grafana](docs/screenshots/13-grafana-dashboard.png) | ![Prometheus](docs/screenshots/14-prometheus-targets.png) |
 
 ---
 
@@ -89,14 +103,16 @@ docker compose up -d
 
 Wait ~60 seconds, then:
 
-| Service             | URL                                   |
-| ------------------- | ------------------------------------- |
-| 🖥️ Frontend         | http://localhost:5173                 |
-| 📋 Eureka Dashboard | http://localhost:8761                 |
-| 🔌 API Gateway      | http://localhost:8080/api             |
-| ❤️ Auth Health      | http://localhost:8081/actuator/health |
-| ❤️ Product Health   | http://localhost:8083/actuator/health |
-| ❤️ Order Health     | http://localhost:8084/actuator/health |
+| Service             | URL                                      |
+| ------------------- | ---------------------------------------- |
+| 🖥️ Frontend         | http://localhost:5173                    |
+| 📋 Eureka Dashboard | http://localhost:8761                    |
+| 🔌 API Gateway      | http://localhost:8080/api                |
+| 📊 Prometheus       | http://localhost:9090                    |
+| 📈 Grafana          | http://localhost:3000  (admin/admin)     |
+| ❤️ Auth Health      | http://localhost:8081/actuator/health    |
+| ❤️ Product Health   | http://localhost:8083/actuator/health    |
+| ❤️ Order Health     | http://localhost:8084/actuator/health    |
 
 ### Stop
 
@@ -122,6 +138,8 @@ docker compose down -v
 | **product-service** | 8083 | Product CRUD (SELLER), browse/search (all), stock      | postgres-product :5434 |
 | **order-service**   | 8084 | Order placement, history, seller management            | postgres-order :5435   |
 | **frontend**        | 5173 | React SPA                                              | —                      |
+| **prometheus**      | 9090 | Metrics collection & time-series storage               | —          |
+| **grafana**         | 3000 | Metrics visualization & dashboards                     | —          |
 
 ---
 
