@@ -249,3 +249,34 @@ Only seller can transition. Invalid transitions return 400.
 ```bash
 docker compose up -d
 ```
+
+### Frontend: seller token-expiry redirect leaves stale navbar (CONFIRMED)
+
+**Reproduction:** Login as seller → wait 15 min for access token expiry → open
+/seller/my-products → page redirects to /login but navbar still shows the seller.
+
+**Confirmed root cause chain:**
+
+1. `productsAxios.js` response interceptor is `(error) => Promise.reject(error)`
+   — no refresh attempted, 401 propagates to caller.
+2. `MyProducts.jsx:33` (and siblings in EditProduct.jsx, NewProduct.jsx) catch
+   the 401 and call `navigate("/login", { replace: true })` — client-side nav,
+   no page reload.
+3. AuthContext.user remains set (nothing cleared it), so Navbar shows the
+   stale user.
+
+**Fix plan (all files identified):**
+
+- A. Delete ordersAxios.js and productsAxios.js
+- B. Repoint api/orders.js and api/products.js at shared axios.js
+- C. axios.js baseURL /api/auth → /api; api/auth.js paths get /auth prefix
+- D. Remove setOrdersAccessToken / setProductsAccessToken from AuthContext.jsx
+- E. Remove 401/403 catch blocks in seller pages (become dead code)
+- F. When refresh fails, clear AuthContext.user (via event bus or full reload)
+
+**Estimated fix time:** 45–60 min including testing.
+
+**Test plan:** Login as seller → force-expire access token → open /seller/my-products
+→ expect: page loads normally (silent refresh, no redirect). Then delete
+refreshToken from localStorage → open same page → expect: redirect to /login
+AND navbar shows no user.

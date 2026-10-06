@@ -1,8 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import * as authApi from "../api/auth";
 import { setAccessToken } from "../api/axios";
-import { setAccessToken as setProductsAccessToken } from "../api/productsAxios";
-import { setAccessToken as setOrdersAccessToken } from "../api/ordersAxios";
 
 const AuthContext = createContext(null);
 
@@ -23,8 +21,6 @@ export const AuthProvider = ({ children }) => {
       .refresh(storedRefreshToken)
       .then((resp) => {
         setAccessToken(resp.accessToken);
-        setProductsAccessToken(resp.accessToken);
-        setOrdersAccessToken(resp.accessToken);
         setAccessTokenState(resp.accessToken);
         setUser(resp.user);
         localStorage.setItem("refreshToken", resp.refreshToken);
@@ -32,8 +28,6 @@ export const AuthProvider = ({ children }) => {
       .catch(() => {
         localStorage.removeItem("refreshToken");
         setAccessToken(null);
-        setProductsAccessToken(null);
-        setOrdersAccessToken(null);
         setAccessTokenState(null);
       })
       .finally(() => {
@@ -41,12 +35,23 @@ export const AuthProvider = ({ children }) => {
       });
   }, []);
 
-  const login = async (email, password) => {
+  useEffect(() => {
+    const handleAuthCleared = () => {
+      localStorage.removeItem("refreshToken");
+      setAccessToken(null);
+      setAccessTokenState(null);
+      setUser(null);
+    };
+    window.addEventListener("auth:cleared", handleAuthCleared);
+    return () => {
+      window.removeEventListener("auth:cleared", handleAuthCleared);
+    };
+  }, []);
+
+  const login =  async (email, password) => {
     const resp = await authApi.login({ email, password });
     localStorage.setItem("refreshToken", resp.refreshToken);
     setAccessToken(resp.accessToken);
-    setProductsAccessToken(resp.accessToken);
-    setOrdersAccessToken(resp.accessToken);
     setAccessTokenState(resp.accessToken);
     setUser(resp.user);
     return resp.user;
@@ -71,8 +76,6 @@ export const AuthProvider = ({ children }) => {
     }
     localStorage.removeItem("refreshToken");
     setAccessToken(null);
-    setProductsAccessToken(null);
-    setOrdersAccessToken(null);
     setAccessTokenState(null);
     setUser(null);
   };

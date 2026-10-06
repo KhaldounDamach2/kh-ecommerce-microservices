@@ -30,10 +30,6 @@ export default function MyProducts() {
       setProducts(response.content || []);
       setTotalPages(response.totalPages || 0);
     } catch (requestError) {
-      if ([401, 403].includes(requestError.response?.status)) {
-        navigate("/login", { replace: true });
-        return;
-      }
       setError(requestError.response?.data?.message || requestError.message);
     } finally {
       setLoading(false);
@@ -57,10 +53,6 @@ export default function MyProducts() {
         loadProducts();
       }
     } catch (requestError) {
-      if ([401, 403].includes(requestError.response?.status)) {
-        navigate("/login", { replace: true });
-        return;
-      }
       setError(requestError.response?.data?.message || requestError.message);
     }
   };

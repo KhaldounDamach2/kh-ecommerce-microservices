@@ -29,10 +29,6 @@ export default function EditProduct() {
       try {
         setProduct(await getProduct(id));
       } catch (requestError) {
-        if ([401, 403].includes(requestError.response?.status)) {
-          navigate("/login", { replace: true });
-          return;
-        }
         setError(requestError.response?.data?.message || requestError.message);
       } finally {
         setLoading(false);
@@ -49,10 +45,6 @@ export default function EditProduct() {
       await updateProduct(id, values);
       navigate("/seller/products");
     } catch (requestError) {
-      if ([401, 403].includes(requestError.response?.status)) {
-        navigate("/login", { replace: true });
-        return;
-      }
       setError(requestError.response?.data?.message || requestError.message);
     } finally {
       setSaving(false);
