@@ -24,10 +24,6 @@ export default function NewProduct() {
       await createProduct(values);
       navigate("/seller/products");
     } catch (requestError) {
-      if ([401, 403].includes(requestError.response?.status)) {
-        navigate("/login", { replace: true });
-        return;
-      }
       setError(requestError.response?.data?.message || requestError.message);
     } finally {
       setLoading(false);
