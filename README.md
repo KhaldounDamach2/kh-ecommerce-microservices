@@ -9,35 +9,41 @@ A production-shaped e-commerce platform built with **Spring Boot 4 + Spring Clou
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ed)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)
 
+[![CI](https://github.com/KhaldounDamach2/kh-ecommerce-microservices/actions/workflows/ci.yml/badge.svg)](https://github.com/KhaldounDamach2/kh-ecommerce-microservices/actions/workflows/ci.yml)
+
 ---
 
 ## 📸 Screenshots
 
 ### Customer Flow
 
-| Home | Products | Product Detail |
-|---|---|---|
+| Home                                  | Products                                      | Product Detail                                     |
+| ------------------------------------- | --------------------------------------------- | -------------------------------------------------- |
 | ![Home](docs/screenshots/01-home.png) | ![Products](docs/screenshots/10-products.png) | ![Detail](docs/screenshots/03-product-details.png) |
 
-| Cart | Checkout | My Orders |
-|---|---|---|
+| Cart                                  | Checkout                                      | My Orders                                    |
+| ------------------------------------- | --------------------------------------------- | -------------------------------------------- |
 | ![Cart](docs/screenshots/07-cart.png) | ![Checkout](docs/screenshots/08-checkout.png) | ![Orders](docs/screenshots/09-my-orders.png) |
 
 ### Seller Flow
 
-| Seller Products | Product Edit | Order Details |
-|---|---|---|
+| Seller Products                                    | Product Edit                                  | Order Details                                   |
+| -------------------------------------------------- | --------------------------------------------- | ----------------------------------------------- |
 | ![Seller](docs/screenshots/02-seller-products.png) | ![Edit](docs/screenshots/05-product-edit.png) | ![Order](docs/screenshots/04-order-details.png) |
 
-| Product Status | | |
-|---|---|---|
-| ![Status](docs/screenshots/06-seller-product-status.png) | | |
+| Product Status                                           |     |     |
+| -------------------------------------------------------- | --- | --- |
+| ![Status](docs/screenshots/06-seller-product-status.png) |     |     |
 
 ### Infrastructure & Observability
 
-| Eureka Dashboard | Grafana (JVM Metrics) | Prometheus Targets |
-|---|---|---|
+| Eureka Dashboard                          | Grafana (JVM Metrics)                                 | Prometheus Targets                                        |
+| ----------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------- |
 | ![Eureka](docs/screenshots/12-eureka.png) | ![Grafana](docs/screenshots/13-grafana-dashboard.png) | ![Prometheus](docs/screenshots/14-prometheus-targets.png) |
+
+| GitHub Actions CI                          |
+| ------------------------------------------ |
+| ![CI](docs/screenshots/15-ci-pipeline.png) |
 
 ---
 
@@ -103,16 +109,16 @@ docker compose up -d
 
 Wait ~60 seconds, then:
 
-| Service             | URL                                      |
-| ------------------- | ---------------------------------------- |
-| 🖥️ Frontend         | http://localhost:5173                    |
-| 📋 Eureka Dashboard | http://localhost:8761                    |
-| 🔌 API Gateway      | http://localhost:8080/api                |
-| 📊 Prometheus       | http://localhost:9090                    |
-| 📈 Grafana          | http://localhost:3000  (admin/admin)     |
-| ❤️ Auth Health      | http://localhost:8081/actuator/health    |
-| ❤️ Product Health   | http://localhost:8083/actuator/health    |
-| ❤️ Order Health     | http://localhost:8084/actuator/health    |
+| Service             | URL                                   |
+| ------------------- | ------------------------------------- |
+| 🖥️ Frontend         | http://localhost:5173                 |
+| 📋 Eureka Dashboard | http://localhost:8761                 |
+| 🔌 API Gateway      | http://localhost:8080/api             |
+| 📊 Prometheus       | http://localhost:9090                 |
+| 📈 Grafana          | http://localhost:3000 (admin/admin)   |
+| ❤️ Auth Health      | http://localhost:8081/actuator/health |
+| ❤️ Product Health   | http://localhost:8083/actuator/health |
+| ❤️ Order Health     | http://localhost:8084/actuator/health |
 
 ### Stop
 
@@ -138,8 +144,8 @@ docker compose down -v
 | **product-service** | 8083 | Product CRUD (SELLER), browse/search (all), stock      | postgres-product :5434 |
 | **order-service**   | 8084 | Order placement, history, seller management            | postgres-order :5435   |
 | **frontend**        | 5173 | React SPA                                              | —                      |
-| **prometheus**      | 9090 | Metrics collection & time-series storage               | —          |
-| **grafana**         | 3000 | Metrics visualization & dashboards                     | —          |
+| **prometheus**      | 9090 | Metrics collection & time-series storage               | —                      |
+| **grafana**         | 3000 | Metrics visualization & dashboards                     | —                      |
 
 ---
 
@@ -147,14 +153,34 @@ docker compose down -v
 
 Prometheus scrapes metrics from all 5 Spring Boot services; Grafana visualizes them.
 
-| Component | Purpose | URL |
-|---|---|---|
+| Component      | Purpose                                                             | URL                   |
+| -------------- | ------------------------------------------------------------------- | --------------------- |
 | **Prometheus** | Metrics collection, time-series storage (15s scrape, 15d retention) | http://localhost:9090 |
-| **Grafana** | Dashboards & visualization (provisioned Prometheus datasource) | http://localhost:3000 |
+| **Grafana**    | Dashboards & visualization (provisioned Prometheus datasource)      | http://localhost:3000 |
 
 Every service exposes `/actuator/prometheus` via Micrometer. Prometheus discovers targets by Docker container name (`eureka-server:8761`, `api-gateway:8080`, `auth-service:8081`, `product-service:8083`, `order-service:8084`).
 
-**Recommended dashboard:** import Grafana dashboard ID `4701` (*JVM (Micrometer)*) via **Dashboards → New → Import**.
+**Recommended dashboard:** import Grafana dashboard ID `4701` (_JVM (Micrometer)_) via **Dashboards → New → Import**.
+
+## 🚀 CI/CD
+
+**GitHub Actions** runs on every push to `main`: builds all 5 Spring Boot services in parallel (matrix strategy), runs unit tests, and builds the frontend. When everything is green, a `notify` job publishes a deployment signal artifact.
+
+**Continuous deployment** runs on the deployment VM via a polling script + cron:
+
+- Every 5 minutes, the VM queries GitHub's public API for the latest successful `ci.yml` run on `main`
+- If the latest green commit differs from the VM's local `HEAD`, it pulls and runs `docker compose up -d --build`
+- If checks are still pending or failing, it skips (CI-gated deployment)
+
+This design works **without a public tunnel or SSH secrets** — the VM polls GitHub, so the NAT/firewall constraints of a local VirtualBox deployment are irrelevant.
+
+| Component     | File                       | Purpose                                         |
+| ------------- | -------------------------- | ----------------------------------------------- |
+| CI workflow   | `.github/workflows/ci.yml` | Matrix build + tests + deployment signal        |
+| Deploy script | `~/ci-deploy.sh` (on VM)   | Polls GitHub, verifies checks, deploys on green |
+| Cron entry    | `crontab -l` on VM         | Runs deploy script every 5 minutes              |
+
+**Note:** This is a _recreate_ deployment (short downtime during each deploy). For zero-downtime, blue-green deployment would be the next step.
 
 ## 🔐 Authentication & Authorization
 
@@ -334,8 +360,8 @@ kh-ecommerce-microservices/
 ## 🚧 Roadmap
 
 - [x] Prometheus + Grafana observability
-- [ ] Cloud deployment (Oracle Cloud free tier)
-- [ ] GitHub Actions CI/CD
+- [x] CI/CD pipeline (GitHub Actions + auto-deploy to Ubuntu VM)
+- [ ] Public URL / cloud deployment (Oracle Cloud free tier)
 - [ ] Kafka event bus + notification-service
 - [ ] Admin panel
 - [ ] Image upload (S3)
