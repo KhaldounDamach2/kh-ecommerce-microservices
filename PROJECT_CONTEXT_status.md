@@ -250,33 +250,54 @@ Only seller can transition. Invalid transitions return 400.
 docker compose up -d
 ```
 
-### Frontend: seller token-expiry redirect leaves stale navbar (CONFIRMED)
+### Frontend: seller token-expiry redirect leaves stale navbar (RESOLVED)
 
-**Reproduction:** Login as seller → wait 15 min for access token expiry → open
-/seller/my-products → page redirects to /login but navbar still shows the seller.
+**Status:** Fixed in commit `45b1464` (fix(frontend): consolidate axios instances so refresh works everywhere).
 
-**Confirmed root cause chain:**
+**Root cause:** Three duplicate axios instances existed — only `api/axios.js` had the refresh-on-401 interceptor. `ordersAxios.js` and `productsAxios.js` had empty interceptors, so any 401 on seller/product pages propagated to page-level catch blocks that called `navigate("/login")` without clearing AuthContext.user. Result: redirect to login while navbar still showed the previous user.
 
-1. `productsAxios.js` response interceptor is `(error) => Promise.reject(error)`
-   — no refresh attempted, 401 propagates to caller.
-2. `MyProducts.jsx:33` (and siblings in EditProduct.jsx, NewProduct.jsx) catch
-   the 401 and call `navigate("/login", { replace: true })` — client-side nav,
-   no page reload.
-3. AuthContext.user remains set (nothing cleared it), so Navbar shows the
-   stale user.
+**Fix applied:**
+- Deleted `ordersAxios.js` and `productsAxios.js` (byte-for-byte duplicates)
+- Repointed `api/orders.js` and `api/products.js` at the shared `api/axios.js`
+- Changed `axios.js` baseURL from `/api/auth` to `/api`; added `/auth` prefix to auth-service calls in `api/auth.js`
+- Removed dead `setOrdersAccessToken` / `setProductsAccessToken` from `AuthContext.jsx`
+- Removed 5 dead 401/403 catch blocks in seller pages
+- Replaced the hard-reload `window.location.href` fallback with a `window.dispatchEvent(new Event("auth:cleared"))` event; AuthContext listens and clears user/token state
 
-**Fix plan (all files identified):**
+**Verified:** Login as seller → force-expire access token → open `/seller/my-products` → page loads normally (silent refresh, no redirect). Then delete `refreshToken` from localStorage → open same page → redirect to `/login` with clean navbar (no stale user shown).
 
-- A. Delete ordersAxios.js and productsAxios.js
-- B. Repoint api/orders.js and api/products.js at shared axios.js
-- C. axios.js baseURL /api/auth → /api; api/auth.js paths get /auth prefix
-- D. Remove setOrdersAccessToken / setProductsAccessToken from AuthContext.jsx
-- E. Remove 401/403 catch blocks in seller pages (become dead code)
-- F. When refresh fails, clear AuthContext.user (via event bus or full reload)
+## 🚀 CI/CD Pipeline
 
-**Estimated fix time:** 45–60 min including testing.
+**GitHub Actions** (`.github/workflows/ci.yml`) runs on every push and PR to `main`:
 
-**Test plan:** Login as seller → force-expire access token → open /seller/my-products
-→ expect: page loads normally (silent refresh, no redirect). Then delete
-refreshToken from localStorage → open same page → expect: redirect to /login
-AND navbar shows no user.
+| Job | Purpose | Runtime |
+|---|---|---|
+| `build-backend` (matrix × 5) | Compiles + runs unit tests for eureka-server, api-gateway, auth-service, product-service, order-service | ~30s |
+| `build-frontend` | `npm ci` + `vite build` | ~15s (cached) |
+| `notify` | Runs only on push to `main` after both above pass. Publishes `deployment-signal` artifact with the commit SHA. | ~5s |
+
+**Continuous deployment** runs on the VM (`ubuntu73`) via a polling script + cron:
+
+- Script: `/home/dkhal/ci-deploy.sh`
+- Cron: `*/5 * * * * /home/dkhal/ci-deploy.sh >> /dev/null 2>&1`
+- Logs: `/home/dkhal/auto-deploy.log`
+
+**Logic:**
+1. Query `https://api.github.com/repos/KhaldounDamach2/kh-ecommerce-microservices/actions/workflows/ci.yml/runs?branch=main&status=success&per_page=1` (public API, no token)
+2. Extract `head_sha` from the latest successful run
+3. Query `/commits/{sha}/check-runs` to confirm all checks are green
+4. Compare with local `git rev-parse HEAD`
+5. If different → `git fetch && git reset --hard origin/main && docker compose down && docker compose up -d --build`
+6. If same → no-op
+
+**Why polling instead of GitHub-to-VM SSH:**
+- The VM is a local VirtualBox VM behind NAT (`10.0.2.15`)
+- GitHub Actions runners can't reach it (no public IP, no tunnel)
+- Polling from VM → GitHub sidesteps the NAT problem entirely
+- Requires no SSH secrets, no Cloudflare Tunnel, no domain
+
+**Tradeoffs:**
+- Deployment latency: up to 5 minutes (cron interval)
+- Recreate deployment (short downtime during rebuild) — not blue-green
+
+**Next step (future):** Blue-green deployment with two parallel stacks + nginx switch for zero-downtime.
