@@ -58,3 +58,28 @@ jobs:
       - name: Build frontend
         working-directory: ./frontend
         run: npm run build
+
+  notify:
+    name: Signal Deployment Ready
+    needs: [build-backend, build-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Create deployment signal
+        run: |
+          cat > deployment-signal.json <<EOF
+          {
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "commit": "${{ github.sha }}",
+            "status": "ready",
+            "message": "All 5 services built + tested, frontend built"
+          }
+          EOF
+          cat deployment-signal.json
+
+      - name: Upload deployment signal
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-signal
+          path: deployment-signal.json
+          retention-days: 7
