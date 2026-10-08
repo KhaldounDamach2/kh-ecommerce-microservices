@@ -70,6 +70,7 @@ services:
       SPRING_PROFILES_ACTIVE: ""
       EUREKA_CLIENT_REGISTER_WITH_EUREKA: "false"
       EUREKA_CLIENT_FETCH_REGISTRY: "false"
+      JAVA_OPTS: "-XX:+UseSerialGC -Xms256m -Xmx512m -XX:TieredStopAtLevel=1 -noverify"
     depends_on:
       postgres-auth:
         condition: service_healthy
@@ -105,6 +106,7 @@ services:
       SPRING_PROFILES_ACTIVE: ""
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
       JWT_SECRET: ${JWT_SECRET}
+      JAVA_OPTS: "-XX:+UseSerialGC -Xms256m -Xmx512m -XX:TieredStopAtLevel=1 -noverify"
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -141,6 +143,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       MAILTRAP_USERNAME: ${MAILTRAP_USERNAME}
       MAILTRAP_PASSWORD: ${MAILTRAP_PASSWORD}
+      JAVA_OPTS: "-XX:+UseSerialGC -Xms256m -Xmx512m -XX:TieredStopAtLevel=1 -noverify"
     depends_on:
       postgres-auth:
         condition: service_healthy
@@ -176,6 +179,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-product:5432/product_db
       SPRING_DATASOURCE_USERNAME: product_user
       SPRING_DATASOURCE_PASSWORD: product_pass
+      JAVA_OPTS: "-XX:+UseSerialGC -Xms256m -Xmx512m -XX:TieredStopAtLevel=1 -noverify"
     depends_on:
       postgres-product:
         condition: service_healthy
@@ -211,6 +215,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-order:5432/order_db
       SPRING_DATASOURCE_USERNAME: order_user
       SPRING_DATASOURCE_PASSWORD: order_pass
+      JAVA_OPTS: "-XX:+UseSerialGC -Xms256m -Xmx512m -XX:TieredStopAtLevel=1 -noverify"
     depends_on:
       postgres-order:
         condition: service_healthy
@@ -258,10 +263,10 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=15d'
-      - '--web.enable-lifecycle'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
     healthcheck:
       test:
         [
