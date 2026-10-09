@@ -115,7 +115,7 @@ Every service exposes /actuator/prometheus via Micrometer. Prometheus discovers 
 Recommended dashboard: import Grafana dashboard ID 4701 (JVM (Micrometer)) via Dashboards → New → Import.
 
 🚀 CI/CD
-https://docs/diagrams/cicd-pipeline.drawio.svg
+![CI/CD Pipeline](docs/diagrams/cicd-pipeline.drawio.svg)
 
 GitHub Actions runs on every push to main: builds all 5 Spring Boot services in parallel (matrix strategy), runs unit tests, and builds the frontend. When everything is green, a notify job publishes a deployment signal artifact.
 
@@ -136,7 +136,7 @@ Cron entry	crontab -l on VM	Runs deploy script every 5 minutes
 Note: This is a recreate deployment (short downtime during each deploy). For zero-downtime, blue-green deployment would be the next step.
 
 🔐 Authentication & Authorization
-https://docs/diagrams/security-auth-flow.drawio.svg
+![Authentication Flow](docs/diagrams/security-auth-flow.drawio.svg)
 
 JWT validated at the API Gateway — single point of auth.
 
@@ -207,7 +207,7 @@ Snapshot pattern: order items store product data at order time
 State machine: PENDING → CONFIRMED → SHIPPED → DELIVERED
 
 🔌 Inter-Service Communication
-https://docs/diagrams/order-flow.drawio.svg
+![Order Placement Flow](docs/diagrams/order-flow.drawio.svg)
 
 OpenFeign + Apache HC5 (for PATCH support).
 
