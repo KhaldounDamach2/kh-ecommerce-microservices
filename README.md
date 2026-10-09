@@ -51,7 +51,7 @@ A production-shaped e-commerce platform built with **Spring Boot 4 + Spring Clou
 
 ## 🏗️ Architecture
 
-![Runtime Architecture](docs/diagrams/architecture.drawio.svg)
+![Runtime Architecture](docs/diagrams/architecture.png)
 
 **5 Spring Boot services** behind an **API Gateway**, all registered with **Eureka** for service discovery. Each service owns its own **PostgreSQL** database (database-per-service pattern). The frontend is a React SPA served by nginx, which proxies `/api/*` to the gateway.
 
@@ -115,7 +115,7 @@ Every service exposes /actuator/prometheus via Micrometer. Prometheus discovers 
 Recommended dashboard: import Grafana dashboard ID 4701 (JVM (Micrometer)) via Dashboards → New → Import.
 
 🚀 CI/CD
-![CI/CD Pipeline](docs/diagrams/cicd-pipeline.drawio.svg)
+![CI/CD Pipeline](docs/diagrams/cicd-pipeline.png)
 
 GitHub Actions runs on every push to main: builds all 5 Spring Boot services in parallel (matrix strategy), runs unit tests, and builds the frontend. When everything is green, a notify job publishes a deployment signal artifact.
 
@@ -136,7 +136,7 @@ Cron entry	crontab -l on VM	Runs deploy script every 5 minutes
 Note: This is a recreate deployment (short downtime during each deploy). For zero-downtime, blue-green deployment would be the next step.
 
 🔐 Authentication & Authorization
-![Authentication Flow](docs/diagrams/security-auth-flow.drawio.svg)
+![Authentication Flow](docs/diagrams/security-auth-flow.png)
 
 JWT validated at the API Gateway — single point of auth.
 
@@ -207,7 +207,7 @@ Snapshot pattern: order items store product data at order time
 State machine: PENDING → CONFIRMED → SHIPPED → DELIVERED
 
 🔌 Inter-Service Communication
-![Order Placement Flow](docs/diagrams/order-flow.drawio.svg)
+![Order Placement Flow](docs/diagrams/order-flow.png)
 
 OpenFeign + Apache HC5 (for PATCH support).
 
