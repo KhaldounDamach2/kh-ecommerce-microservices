@@ -8,41 +8,7 @@ role-based access control. Fully dockerized.
 
 ## 🏗️ Architecture
 
-                        ┌──────────────────┐
-                        │   Eureka Server  │  :8761
-                        │ (Service Registry)│
-                        └────────┬─────────┘
-                                 │
-        ┌────────────────────────┼────────────────────────┐
-        │                        │                        │
-
-┌────▼─────┐ ┌───────▼───────┐ ┌───────▼───────┐
-│ API │ │ Auth │ │ Product │
-│ Gateway │ │ Service │ │ Service │
-│ :8080 │ │ :8081 │ │ :8083 │
-└────┬─────┘ └───────┬───────┘ └───────┬───────┘
-│ │ │
-│ │ │
-│ ┌─────▼──────┐ │
-│ │ postgres- │ │
-│ │ auth │ │
-│ │ :5433 │ │
-│ └────────────┘ │
-│ │
-│ ┌──────────────┐ Feign HC5 │
-└─────────────────►│ Order │◄──────────────┘
-│ Service │
-│ :8084 │
-└──────┬───────┘
-│
-┌──────▼───────┐
-│ postgres- │
-│ order │
-│ :5435 │
-└──────────────┘
-
-Frontend (React + Vite + nginx) :5173
-└── /api/\* proxied to API Gateway :8080
+![Architecture](docs/diagrams/architecture.png)
 
 ---
 
@@ -186,8 +152,8 @@ Only seller can transition. Invalid transitions return 400.
 - 3 Postgres instances (auth, product, order)
 - 5 Spring Boot services (multi-stage Dockerfiles: JDK build → JRE runtime)
 - 1 nginx-served React frontend
-- Custom bridge network `ecommerce-net`
-- Persistent volumes for Postgres data
+- 1 Prometheus (metrics scraper, TSDB)
+- 1 Grafana (dashboards, provisioned datasource)
 
 ### Configuration
 
@@ -239,6 +205,8 @@ Only seller can transition. Invalid transitions return 400.
 - Docker + Docker Compose
 - Eureka (service discovery)
 - Nginx (frontend serving + API proxy)
+- Prometheus + Micrometer (metrics collection)
+- Grafana (dashboards & visualization)
 
 ---
 
@@ -257,6 +225,7 @@ docker compose up -d
 **Root cause:** Three duplicate axios instances existed — only `api/axios.js` had the refresh-on-401 interceptor. `ordersAxios.js` and `productsAxios.js` had empty interceptors, so any 401 on seller/product pages propagated to page-level catch blocks that called `navigate("/login")` without clearing AuthContext.user. Result: redirect to login while navbar still showed the previous user.
 
 **Fix applied:**
+
 - Deleted `ordersAxios.js` and `productsAxios.js` (byte-for-byte duplicates)
 - Repointed `api/orders.js` and `api/products.js` at the shared `api/axios.js`
 - Changed `axios.js` baseURL from `/api/auth` to `/api`; added `/auth` prefix to auth-service calls in `api/auth.js`
@@ -270,11 +239,11 @@ docker compose up -d
 
 **GitHub Actions** (`.github/workflows/ci.yml`) runs on every push and PR to `main`:
 
-| Job | Purpose | Runtime |
-|---|---|---|
-| `build-backend` (matrix × 5) | Compiles + runs unit tests for eureka-server, api-gateway, auth-service, product-service, order-service | ~30s |
-| `build-frontend` | `npm ci` + `vite build` | ~15s (cached) |
-| `notify` | Runs only on push to `main` after both above pass. Publishes `deployment-signal` artifact with the commit SHA. | ~5s |
+| Job                          | Purpose                                                                                                        | Runtime       |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------- |
+| `build-backend` (matrix × 5) | Compiles + runs unit tests for eureka-server, api-gateway, auth-service, product-service, order-service        | ~30s          |
+| `build-frontend`             | `npm ci` + `vite build`                                                                                        | ~15s (cached) |
+| `notify`                     | Runs only on push to `main` after both above pass. Publishes `deployment-signal` artifact with the commit SHA. | ~5s           |
 
 **Continuous deployment** runs on the VM (`ubuntu73`) via a polling script + cron:
 
@@ -283,6 +252,7 @@ docker compose up -d
 - Logs: `/home/dkhal/auto-deploy.log`
 
 **Logic:**
+
 1. Query `https://api.github.com/repos/KhaldounDamach2/kh-ecommerce-microservices/actions/workflows/ci.yml/runs?branch=main&status=success&per_page=1` (public API, no token)
 2. Extract `head_sha` from the latest successful run
 3. Query `/commits/{sha}/check-runs` to confirm all checks are green
@@ -291,12 +261,14 @@ docker compose up -d
 6. If same → no-op
 
 **Why polling instead of GitHub-to-VM SSH:**
+
 - The VM is a local VirtualBox VM behind NAT (`10.0.2.15`)
 - GitHub Actions runners can't reach it (no public IP, no tunnel)
 - Polling from VM → GitHub sidesteps the NAT problem entirely
 - Requires no SSH secrets, no Cloudflare Tunnel, no domain
 
 **Tradeoffs:**
+
 - Deployment latency: up to 5 minutes (cron interval)
 - Recreate deployment (short downtime during rebuild) — not blue-green
 
