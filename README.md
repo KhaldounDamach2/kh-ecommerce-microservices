@@ -1,5 +1,3 @@
-===
-
 # 🛒 E-Commerce Microservices Platform
 
 A production-shaped e-commerce platform built with **Spring Boot 4 + Spring Cloud + React 18**, featuring 5 microservices with service discovery, API gateway, JWT authentication, role-based access control, and full Docker orchestration.
@@ -43,9 +41,9 @@ A production-shaped e-commerce platform built with **Spring Boot 4 + Spring Clou
 | ----------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------- |
 | ![Eureka](docs/screenshots/12-eureka.png) | ![Grafana](docs/screenshots/13-grafana-dashboard.png) | ![Prometheus](docs/screenshots/14-prometheus-targets.png) |
 
-| GitHub Actions CI                          |
-| ------------------------------------------ |
-| ![CI](docs/screenshots/15-ci-pipeline.png) |
+| GitHub Actions CI                          |     |     |
+| ------------------------------------------ | --- | --- |
+| ![CI](docs/screenshots/15-ci-pipeline.png) |     |     |
 
 ---
 
@@ -72,209 +70,202 @@ A production-shaped e-commerce platform built with **Spring Boot 4 + Spring Clou
 
 ### Prerequisites
 
-- Docker Desktop (or Docker + Docker Compose)
+Docker Desktop (or Docker + Docker Compose).
 
 ### Run the entire stack
 
 ```bash
 git clone <your-repo-url>
 cd kh-ecommerce-microservices
-
-# Create .env from template
 cp .env.example .env
-# Edit .env with your values (JWT secret, Mailtrap credentials)
-
-# Start everything
 docker compose up -d
+```
 
 Wait ~60 seconds, then:
 
-Service	URL
-🖥️ Frontend	http://localhost:5173
-📋 Eureka Dashboard	http://localhost:8761
-🔌 API Gateway	http://localhost:8080/api
-📊 Prometheus	http://localhost:9090
-📈 Grafana	http://localhost:3000 (admin/admin)
-❤️ Auth Health	http://localhost:8081/actuator/health
-❤️ Product Health	http://localhost:8083/actuator/health
-❤️ Order Health	http://localhost:8084/actuator/health
-Stop
-bash
+| Service             | URL                                   |
+| ------------------- | ------------------------------------- |
+| 🖥️ Frontend         | http://localhost:5173                 |
+| 📋 Eureka Dashboard | http://localhost:8761                 |
+| 🔌 API Gateway      | http://localhost:8080/api             |
+| 📊 Prometheus       | http://localhost:9090                 |
+| 📈 Grafana          | http://localhost:3000 (admin/admin)   |
+| ❤️ Auth Health      | http://localhost:8081/actuator/health |
+| ❤️ Product Health   | http://localhost:8083/actuator/health |
+| ❤️ Order Health     | http://localhost:8084/actuator/health |
+
+### Stop
+
+```bash
 docker compose down
-Stop and delete data
-bash
+```
+
+### Stop and delete data
+
+```bash
 docker compose down -v
-📊 Monitoring
+```
+
+---
+
+## 📊 Monitoring
+
 Prometheus scrapes metrics from all 5 Spring Boot services; Grafana visualizes them.
 
-Component	Purpose	URL
-Prometheus	Metrics collection, time-series storage (15s scrape, 15d retention)	http://localhost:9090
-Grafana	Dashboards & visualization (provisioned Prometheus datasource)	http://localhost:3000
-Every service exposes /actuator/prometheus via Micrometer. Prometheus discovers targets by Docker container name (eureka-server:8761, api-gateway:8080, auth-service:8081, product-service:8083, order-service:8084).
+| Component      | Purpose                                                             | URL                   |
+| -------------- | ------------------------------------------------------------------- | --------------------- |
+| **Prometheus** | Metrics collection, time-series storage (15s scrape, 15d retention) | http://localhost:9090 |
+| **Grafana**    | Dashboards & visualization (provisioned Prometheus datasource)      | http://localhost:3000 |
 
-Recommended dashboard: import Grafana dashboard ID 4701 (JVM (Micrometer)) via Dashboards → New → Import.
+Every service exposes `/actuator/prometheus` via Micrometer. Prometheus discovers targets by Docker container name.
 
-🚀 CI/CD
+**Recommended dashboard:** import Grafana dashboard ID `4701` (JVM Micrometer) via Dashboards → New → Import.
+
+---
+
+## 🚀 CI/CD
+
 ![CI/CD Pipeline](docs/diagrams/cicd-pipeline.png)
 
-GitHub Actions runs on every push to main: builds all 5 Spring Boot services in parallel (matrix strategy), runs unit tests, and builds the frontend. When everything is green, a notify job publishes a deployment signal artifact.
+**GitHub Actions** runs on every push to `main`: builds all 5 Spring Boot services in parallel (matrix strategy), runs unit tests, and builds the frontend. When everything is green, a `notify` job publishes a deployment signal artifact.
 
-Continuous deployment runs on the deployment VM via a polling script + cron:
+**Continuous deployment** runs on the deployment VM via a polling script + cron:
 
-Every 5 minutes, the VM queries GitHub's public API for the latest successful ci.yml run on main
-
-If the latest green commit differs from the VM's local HEAD, it pulls and runs docker compose up -d --build
-
-If checks are still pending or failing, it skips (CI-gated deployment)
+- Every 5 minutes, the VM queries GitHub's public API for the latest successful `ci.yml` run on `main`
+- If the latest green commit differs from the VM's local `HEAD`, it pulls and runs `docker compose up -d --build`
+- If checks are still pending or failing, it skips (CI-gated deployment)
 
 This design works without a public tunnel or SSH secrets — the VM polls GitHub, so the NAT/firewall constraints of a local VirtualBox deployment are irrelevant.
 
-Component	File	Purpose
-CI workflow	.github/workflows/ci.yml	Matrix build + tests + deployment signal
-Deploy script	~/ci-deploy.sh (on VM)	Polls GitHub, verifies checks, deploys on green
-Cron entry	crontab -l on VM	Runs deploy script every 5 minutes
-Note: This is a recreate deployment (short downtime during each deploy). For zero-downtime, blue-green deployment would be the next step.
+| Component     | File                       | Purpose                                         |
+| ------------- | -------------------------- | ----------------------------------------------- |
+| CI workflow   | `.github/workflows/ci.yml` | Matrix build + tests + deployment signal        |
+| Deploy script | `~/ci-deploy.sh` (on VM)   | Polls GitHub, verifies checks, deploys on green |
+| Cron entry    | `crontab -l` on VM         | Runs deploy script every 5 minutes              |
 
-🔐 Authentication & Authorization
+**Note:** This is a recreate deployment (short downtime during each deploy). For zero-downtime, blue-green deployment would be the next step.
+
+---
+
+## 🔐 Authentication & Authorization
+
 ![Authentication Flow](docs/diagrams/security-auth-flow.png)
 
-JWT validated at the API Gateway — single point of auth.
+**JWT validated at the API Gateway** — single point of auth.
 
-Flow
-Browser → Gateway with Authorization: Bearer <JWT>
+### Flow
 
-Gateway's JwtAuthFilter:
+1. Browser → Gateway with `Authorization: Bearer JWT`
+2. Gateway's JwtAuthFilter:
+   - Skips public paths: `/api/auth/register`, `/login`, `/confirm`, `/refresh`, `/logout`
+   - Validates JWT signature (HS256)
+   - Extracts userId and role
+   - Strips any incoming `X-User-Id`/`X-User-Role` headers (anti-spoofing)
+   - Adds trusted `X-User-Id` and `X-User-Role` headers downstream
+3. Services trust these headers via HeaderAuthFilter → Spring Security context
+4. `@PreAuthorize("hasRole('SELLER')")` enforced at service level
 
-Skips public paths: /api/auth/register, /login, /confirm, /refresh, /logout
+### Roles
 
-Validates JWT signature (HS256)
+| Role         | Permissions                                                |
+| ------------ | ---------------------------------------------------------- |
+| **CUSTOMER** | Browse products, place orders, view own orders             |
+| **SELLER**   | Manage own products, view incoming orders, update statuses |
+| **ADMIN**    | Manage all users, products, orders                         |
 
-Extracts userId and role
+### Registration
 
-Strips any incoming X-User-Id/X-User-Role headers (anti-spoofing)
+1. POST /auth/register → save user (enabled=false) → send confirmation email
+2. User clicks link in email → POST /auth/confirm → enabled=true
+3. Only enabled users can log in
 
-Adds trusted X-User-Id and X-User-Role headers downstream
+### Tokens
 
-Services trust these headers via HeaderAuthFilter → Spring Security context
+- Access token: 15 min (dev: 1h via local profile override)
+- Refresh token: 7 days
+- Access token in memory (React state)
+- Refresh token in localStorage
+- Axios interceptor auto-refreshes on 401
 
-@PreAuthorize("hasRole('SELLER')") enforced at service level
+---
 
-Roles
-Role	Permissions
-CUSTOMER	Browse products, place orders, view own orders
-SELLER	Manage own products, view incoming orders, update statuses
-ADMIN	Manage all users, products, orders
-Registration
-POST /auth/register → save user (enabled=false) → send confirmation email
+## 🗄️ Data Model
 
-User clicks link in email → POST /auth/confirm → enabled=true
+### auth-service
 
-Only enabled users can log in
+- `users` (id, email, password, role, enabled, timestamps)
+- `confirmation_tokens` (id, token, user_id, expires_at, confirmed_at)
+- `refresh_tokens` (id, token, user_id, expires_at, revoked)
 
-Tokens
-Access token: 15 min (dev: 1h via local profile override)
+### product-service
 
-Refresh token: 7 days
+- `products` (id, name, description, price, stock, category, image_url, seller_id, active, timestamps)
+- **Soft delete** via `active=false`
+- Indexes on `seller_id`, `category`, `name`, `active`
 
-Access token in memory (React state)
+### order-service
 
-Refresh token in localStorage
+- `orders` (id, customer_id, total_price, status, timestamps)
+- `order_items` (id, order_id FK, product_id, product_name, product_image, seller_id, unit_price, quantity, subtotal)
+- **Snapshot pattern**: order items store product data at order time
+- **State machine**: PENDING → CONFIRMED → SHIPPED → DELIVERED
 
-Axios interceptor auto-refreshes on 401
+---
 
-🗄️ Data Model
-auth-service
-users (id, email, password, role, enabled, timestamps)
+## 🔌 Inter-Service Communication
 
-confirmation_tokens (id, token, user_id, expires_at, confirmed_at)
-
-refresh_tokens (id, token, user_id, expires_at, revoked)
-
-product-service
-products (id, name, description, price, stock, category, image_url, seller_id, active, timestamps)
-
-Soft delete via active=false
-
-Indexes on seller_id, category, name, active
-
-order-service
-orders (id, customer_id, total_price, status, timestamps)
-
-order_items (id, order_id FK, product_id, product_name, product_image, seller_id, unit_price, quantity, subtotal)
-
-Snapshot pattern: order items store product data at order time
-
-State machine: PENDING → CONFIRMED → SHIPPED → DELIVERED
-
-🔌 Inter-Service Communication
 ![Order Placement Flow](docs/diagrams/order-flow.png)
 
-OpenFeign + Apache HC5 (for PATCH support).
+**OpenFeign + Apache HC5** (for PATCH support).
 
-order-service → product-service:
+- `order-service` → `product-service`:
+  - `GET /products/{id}` — fetch product for validation
+  - `PATCH /products/{id}/stock` — decrement stock after order placed
+- **Header propagation**: FeignConfig.RequestInterceptor forwards `X-User-Id`/`X-User-Role` automatically
+- **Best-effort stock decrement**: failures are logged, don't break order placement
 
-GET /products/{id} — fetch product for validation
+---
 
-PATCH /products/{id}/stock — decrement stock after order placed
+## 🛠️ Tech Stack
 
-Header propagation: FeignConfig.RequestInterceptor forwards X-User-Id/X-User-Role automatically
+**Backend**
 
-Best-effort stock decrement: failures are logged, don't break order placement
+- Java 21
+- Spring Boot 4.1.1
+- Spring Cloud 2025.1.3 (Eureka, Gateway, OpenFeign)
+- Spring Security 6 + JWT (JJWT 0.12.6)
+- Spring Data JPA + Hibernate
+- Flyway migrations
+- MapStruct 1.6.3
+- PostgreSQL 16
+- Lombok
+- OpenFeign + Apache HC5
 
-🛠️ Tech Stack
-Backend
+**Frontend**
 
-Java 21
+- React 18 + Vite 8
+- React Router v6
+- Axios (interceptors for JWT + auto-refresh)
+- TailwindCSS 3
+- Context API (AuthContext, CartContext)
 
-Spring Boot 4.1.1
+**Infrastructure**
 
-Spring Cloud 2025.1.3 (Eureka, Gateway, OpenFeign)
+- Docker + Docker Compose
+- Nginx (frontend serving + reverse proxy)
+- Multi-stage Docker builds (JDK → JRE)
+- Prometheus + Micrometer
+- Grafana
 
-Spring Security 6 + JWT (JJWT 0.12.6)
+---
 
-Spring Data JPA + Hibernate
+## 📁 Project Structure
 
-Flyway migrations
-
-MapStruct 1.6.3
-
-PostgreSQL 16
-
-Lombok
-
-OpenFeign + Apache HC5
-
-Frontend
-
-React 18 + Vite 8
-
-React Router v6
-
-Axios (interceptors for JWT + auto-refresh)
-
-TailwindCSS 3
-
-Context API (AuthContext, CartContext)
-
-Infrastructure
-
-Docker + Docker Compose
-
-Nginx (frontend serving + reverse proxy)
-
-Multi-stage Docker builds (JDK → JRE)
-
-Prometheus + Micrometer (metrics collection)
-
-Grafana (dashboards & visualization)
-
-📁 Project Structure
-text
+```
 kh-ecommerce-microservices/
 ├── docker-compose.yaml
 ├── .env.example
 ├── README.md
-├── PROJECT_CONTEXT_status.md
 ├── api-gateway/
 ├── auth-service/
 ├── product-service/
@@ -286,88 +277,81 @@ kh-ecommerce-microservices/
 └── docs/
     ├── diagrams/
     └── screenshots/
-🌐 API Endpoints
-Auth (/api/auth/**)
-POST /api/auth/register
+```
 
-POST /api/auth/confirm
+---
 
-POST /api/auth/login
+## 🌐 API Endpoints
 
-POST /api/auth/refresh
+### Auth
 
-POST /api/auth/logout
+- `POST /api/auth/register`
+- `POST /api/auth/confirm`
+- `POST /api/auth/login`
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
 
-Products (/api/products/**)
-GET /api/products — list (public)
+### Products
 
-GET /api/products/{id} — detail (public)
+- `GET /api/products` — list (public)
+- `GET /api/products/{id}` — detail (public)
+- `GET /api/products/search?q=` — search (public)
+- `GET /api/products/mine` — seller's products (SELLER)
+- `POST /api/products` — create (SELLER)
+- `PUT /api/products/{id}` — update (SELLER, owns)
+- `PATCH /api/products/{id}/stock` — adjust stock (internal)
+- `DELETE /api/products/{id}` — soft delete (SELLER, owns)
 
-GET /api/products/search?q= — search (public)
+### Orders
 
-GET /api/products/mine — seller's products (SELLER)
+- `POST /api/orders` — place order (CUSTOMER)
+- `GET /api/orders/mine` — customer's orders (CUSTOMER)
+- `GET /api/orders/seller` — incoming orders (SELLER)
+- `GET /api/orders/{id}` — detail (auth, ownership checked)
+- `PATCH /api/orders/{id}/status` — update status (SELLER)
 
-POST /api/products — create (SELLER)
+---
 
-PUT /api/products/{id} — update (SELLER, owns)
+## 🎓 Design Decisions
 
-PATCH /api/products/{id}/stock — adjust stock (internal)
+1. **JWT validated at the edge** — single point of auth; downstream services trust headers
+2. **Anti-header-spoofing** — Gateway strips and re-adds identity headers
+3. **Database-per-service** — no shared schema, each service owns its data
+4. **Soft delete** — `active=false` preserves referential integrity
+5. **Snapshot pattern** — order items keep original product data
+6. **Best-effort side effects** — email/stock failures don't break core flows
+7. **Guest cart** — no login needed to add to cart; login enforced at checkout
+8. **Return-to-login flow** — post-login redirect back to intended page
+9. **Multi-stage Docker builds** — small runtime images (JRE only)
+10. **12-factor secrets** — env vars in Docker, gitignored local configs in dev
+11. **Provisioned observability** — Prometheus scrape config and Grafana datasource are committed as files
+12. **CI-gated deployment** — VM polls GitHub for green commits; never deploys red
 
-DELETE /api/products/{id} — soft delete (SELLER, owns)
+---
 
-Orders (/api/orders/**)
-POST /api/orders — place order (CUSTOMER)
+## 🚧 Roadmap
 
-GET /api/orders/mine — customer's orders (CUSTOMER)
+- [x] Prometheus + Grafana observability
+- [x] CI/CD pipeline (GitHub Actions + auto-deploy to Ubuntu VM)
+- [ ] Public URL / cloud deployment (Oracle Cloud free tier)
+- [ ] Kafka event bus + notification-service
+- [ ] Admin panel
+- [ ] Image upload (S3)
+- [ ] Advanced filters (price range, category)
+- [ ] Refresh token rotation
+- [ ] SAGA pattern for distributed transactions
+- [ ] Blue-green deployment (zero-downtime)
 
-GET /api/orders/seller — incoming orders (SELLER)
+---
 
-GET /api/orders/{id} — detail (auth, ownership checked)
+## 📝 License
 
-PATCH /api/orders/{id}/status — update status (SELLER)
-
-🎓 Design Decisions
-JWT validated at the edge — single point of auth; downstream services trust headers
-
-Anti-header-spoofing — Gateway strips and re-adds identity headers
-
-Database-per-service — no shared schema, each service owns its data
-
-Soft delete — active=false preserves referential integrity
-
-Snapshot pattern — order items keep original product data
-
-Best-effort side effects — email/stock failures don't break core flows
-
-Guest cart — no login needed to add to cart; login enforced at checkout
-
-Return-to-login flow — post-login redirect back to intended page
-
-Multi-stage Docker builds — small runtime images (JRE only)
-
-12-factor secrets — env vars in Docker, gitignored local configs in dev
-
-Provisioned observability — Prometheus scrape config and Grafana datasource are committed as files, not clicked through a UI
-
-CI-gated deployment — VM polls GitHub for green commits; never deploys red
-
-🚧 Roadmap
-☑ Prometheus + Grafana observability
-☑ CI/CD pipeline (GitHub Actions + auto-deploy to Ubuntu VM)
-□ Public URL / cloud deployment (Oracle Cloud free tier)
-□ Kafka event bus + notification-service
-□ Admin panel
-□ Image upload (S3)
-□ Advanced filters (price range, category)
-□ Refresh token rotation
-□ SAGA pattern for distributed transactions
-□ Blue-green deployment (zero-downtime)
-📝 License
 MIT (or your preferred license)
 
-👤 Author
-Khaldoun Damach
+---
 
-GitHub: @KhaldounDamach2
-===
-```
+## 👤 Author
+
+**Khaldoun Damach**
+
+- GitHub: [@KhaldounDamach2](https://github.com/KhaldounDamach2)
