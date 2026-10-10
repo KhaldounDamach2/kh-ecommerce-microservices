@@ -96,6 +96,42 @@ services:
     networks:
       - ecommerce-net
 
+    # ============ KAFKA (KRaft mode, no Zookeeper) ============
+  kafka:
+    image: apache/kafka:3.9.0
+    container_name: kafka
+    ports:
+      - "9094:9094"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: INTERNAL://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - ecommerce-net
+
   # ============ API GATEWAY ============
   api-gateway:
     build: ./api-gateway
@@ -180,7 +216,10 @@ services:
       SPRING_DATASOURCE_USERNAME: product_user
       SPRING_DATASOURCE_PASSWORD: product_pass
       JAVA_OPTS: "-XX:+UseSerialGC -Xms256m -Xmx512m -XX:TieredStopAtLevel=1 -noverify"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
+      kafka:
+        condition: service_healthy
       postgres-product:
         condition: service_healthy
       eureka-server:
@@ -214,9 +253,12 @@ services:
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-order:5432/order_db
       SPRING_DATASOURCE_USERNAME: order_user
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_DATASOURCE_PASSWORD: order_pass
       JAVA_OPTS: "-XX:+UseSerialGC -Xms256m -Xmx512m -XX:TieredStopAtLevel=1 -noverify"
     depends_on:
+      kafka:
+        condition: service_healthy
       postgres-order:
         condition: service_healthy
       eureka-server:
@@ -330,6 +372,7 @@ volumes:
   order_db_data:
   prometheus_data:
   grafana_data:
+  kafka_data:
 
 # Internal Postgres connections use native port 5432; 5433/5434/5435 are host-only debugging mappings.
 # SPRING_PROFILES_ACTIVE is empty so application-local.yaml is not loaded in containers; use environment variables for configuration.

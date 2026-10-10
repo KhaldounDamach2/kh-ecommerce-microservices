@@ -25,6 +25,15 @@ spring:
     baseline-on-migrate: true
     locations: classpath:db/migration
 
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    consumer:
+      group-id: product-service
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+    listener:
+      ack-mode: record
+
 eureka:
   client:
     service-url:
@@ -45,5 +54,5 @@ management:
 
 logging:
   level:
-    '[org.springframework.security]': INFO
-    '[com.netflix.discovery]': OFF
+    "[org.springframework.security]": INFO
+    "[com.netflix.discovery]": OFF
