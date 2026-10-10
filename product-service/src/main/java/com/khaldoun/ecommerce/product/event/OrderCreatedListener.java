@@ -5,9 +5,12 @@ import org.springframework.stereotype.Component;
 
 import com.khaldoun.ecommerce.product.config.KafkaTopicConfig;
 import com.khaldoun.ecommerce.product.service.ProductService;
+import com.khaldoun.ecommerce.product.event.OrderCreatedEvent;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import java.util.UUID;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -19,8 +22,6 @@ public class OrderCreatedListener {
     @KafkaListener(topics = KafkaTopicConfig.ORDER_CREATED_TOPIC)
     public void onOrderCreated(OrderCreatedEvent event) {
         log.info("Received OrderCreatedEvent {} for order {}", event.eventId(), event.orderId());
-        for (OrderCreatedEvent.OrderLine line : event.items()) {
-            productService.adjustStock(line.productId(), line.quantity(), "DECREMENT");
-        }
+        productService.applyOrderStockDecrement(event.eventId(), event.items());
     }
 }

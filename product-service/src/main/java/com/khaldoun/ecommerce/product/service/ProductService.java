@@ -5,12 +5,16 @@ import com.khaldoun.ecommerce.product.dto.CreateProductRequest;
 import com.khaldoun.ecommerce.product.dto.ProductResponse;
 import com.khaldoun.ecommerce.product.dto.ProductSummaryResponse;
 import com.khaldoun.ecommerce.product.dto.UpdateProductRequest;
+import com.khaldoun.ecommerce.product.event.OrderCreatedEvent;
 import com.khaldoun.ecommerce.product.exception.InvalidPriceException;
 import com.khaldoun.ecommerce.product.exception.InsufficientStockException;
 import com.khaldoun.ecommerce.product.exception.NotProductOwnerException;
 import com.khaldoun.ecommerce.product.exception.ProductNotFoundException;
 import com.khaldoun.ecommerce.product.mapper.ProductMapper;
 import com.khaldoun.ecommerce.product.repository.ProductRepository;
+import com.khaldoun.ecommerce.product.repository.ProcessedEventRepository;
+import com.khaldoun.ecommerce.product.domain.ProcessedEvent;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -19,7 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +34,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
+    private final ProcessedEventRepository processedEventRepository;
 
     @Transactional
     public ProductResponse createProduct(CreateProductRequest request, Long sellerId) {
@@ -132,5 +139,17 @@ public class ProductService {
         if (price != null && price.compareTo(BigDecimal.ZERO) < 0) {
             throw new InvalidPriceException("Product price cannot be negative");
         }
+    }
+
+    @Transactional
+    public void applyOrderStockDecrement(UUID eventId, List<OrderCreatedEvent.OrderLine> lines) {
+        if (processedEventRepository.existsById(eventId)) {
+            log.info("Event {} already processed, skipping", eventId);
+            return;
+        }
+        for (OrderCreatedEvent.OrderLine line : lines) {
+            adjustStock(line.productId(), line.quantity(), "DECREMENT");
+        }
+        processedEventRepository.save(new ProcessedEvent(eventId));
     }
 }
