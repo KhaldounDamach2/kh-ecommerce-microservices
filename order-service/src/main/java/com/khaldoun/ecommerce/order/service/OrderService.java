@@ -1,18 +1,22 @@
 package com.khaldoun.ecommerce.order.service;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
+import java.time.Instant;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 
 import com.khaldoun.ecommerce.order.client.ProductClient;
-import com.khaldoun.ecommerce.order.client.dto.AdjustStockRequest;
 import com.khaldoun.ecommerce.order.client.dto.ProductClientResponse;
 import com.khaldoun.ecommerce.order.domain.Order;
 import com.khaldoun.ecommerce.order.domain.OrderItem;
@@ -21,6 +25,7 @@ import com.khaldoun.ecommerce.order.dto.CreateOrderRequest;
 import com.khaldoun.ecommerce.order.dto.OrderItemRequest;
 import com.khaldoun.ecommerce.order.dto.OrderResponse;
 import com.khaldoun.ecommerce.order.dto.UpdateOrderStatusRequest;
+import com.khaldoun.ecommerce.order.event.OrderCreatedEvent;
 import com.khaldoun.ecommerce.order.exception.InsufficientStockException;
 import com.khaldoun.ecommerce.order.exception.InvalidOrderStatusException;
 import com.khaldoun.ecommerce.order.exception.OrderNotFoundException;
@@ -28,6 +33,7 @@ import com.khaldoun.ecommerce.order.exception.ProductNotFoundException;
 import com.khaldoun.ecommerce.order.mapper.OrderMapper;
 import com.khaldoun.ecommerce.order.repository.OrderItemRepository;
 import com.khaldoun.ecommerce.order.repository.OrderRepository;
+import com.khaldoun.ecommerce.order.event.OrderCreatedEvent;
 
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +48,7 @@ public class OrderService {
     private final OrderItemRepository orderItemRepository;
     private final ProductClient productClient;
     private final OrderMapper orderMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public OrderResponse placeOrder(CreateOrderRequest request, Long customerId) {
@@ -93,19 +100,14 @@ public class OrderService {
         items.forEach(order::addItem);
 
         Order saved = orderRepository.save(order);
-        // Stock decrement is best-effort. If it fails, we log and continue —
-        // the order is already placed. A production system would use the SAGA
-        // pattern with compensating transactions.
-        for (OrderItem item : saved.getItems()) {
-            try {
-                productClient.adjustStock(
-                        item.getProductId(),
-                        new AdjustStockRequest(item.getQuantity(), "DECREMENT"));
-            } catch (FeignException exception) {
-                log.error("Failed to decrement stock for product {} (order {}): {}",
-                        item.getProductId(), saved.getId(), exception.getMessage());
-            }
-        }
+        eventPublisher.publishEvent(new OrderCreatedEvent(
+                UUID.randomUUID(),
+                saved.getId(),
+                customerId,
+                Instant.now(),
+                saved.getItems().stream()
+                        .map(i -> new OrderCreatedEvent.OrderLine(i.getProductId(), i.getQuantity()))
+                        .toList()));
         log.info("Placed order {} for customer {}", saved.getId(), customerId);
         return orderMapper.toOrderResponse(saved);
     }
