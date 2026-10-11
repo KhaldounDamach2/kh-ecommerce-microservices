@@ -1,5 +1,6 @@
 package com.khaldoun.ecommerce.product.service;
 
+import com.khaldoun.ecommerce.product.event.StockLevelEvent;
 import com.khaldoun.ecommerce.product.domain.Product;
 import com.khaldoun.ecommerce.product.dto.CreateProductRequest;
 import com.khaldoun.ecommerce.product.dto.ProductResponse;
@@ -10,12 +11,16 @@ import com.khaldoun.ecommerce.product.exception.NotProductOwnerException;
 import com.khaldoun.ecommerce.product.exception.ProductNotFoundException;
 import com.khaldoun.ecommerce.product.mapper.ProductMapper;
 import com.khaldoun.ecommerce.product.repository.ProductRepository;
+
+import org.springframework.context.ApplicationEventPublisher;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -30,162 +35,223 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ProductServiceTest {
 
-    @Mock
-    private ProductRepository productRepository;
+        @Mock
+        private ProductRepository productRepository;
 
-    @Mock
-    private ProductMapper productMapper;
+        @Mock
+        private ProductMapper productMapper;
 
-    @InjectMocks
-    private ProductService productService;
+        @InjectMocks
+        private ProductService productService;
 
-    // ---------------------------------------------------------------------
-    // createProduct
-    // ---------------------------------------------------------------------
+        @Mock
+        private ApplicationEventPublisher eventPublisher;
 
-    @Test
-    void createProduct_setsSellerIdAndActiveTrue_andSaves() {
-        CreateProductRequest request = new CreateProductRequest(
-                "Laptop", "Nice laptop", new BigDecimal("999.99"), 10, "Electronics", null);
-        Long sellerId = 42L;
+        // ---------------------------------------------------------------------
+        // createProduct
+        // ---------------------------------------------------------------------
 
-        Product entityToSave = Product.builder()
-                .name(request.name())
-                .description(request.description())
-                .price(request.price())
-                .stock(request.stock())
-                .category(request.category())
-                .build();
+        @Test
+        void createProduct_setsSellerIdAndActiveTrue_andSaves() {
+                CreateProductRequest request = new CreateProductRequest(
+                                "Laptop", "Nice laptop", new BigDecimal("999.99"), 10, "Electronics", null);
+                Long sellerId = 42L;
 
-        Product savedEntity = Product.builder()
-                .id(1L)
-                .name(request.name())
-                .description(request.description())
-                .price(request.price())
-                .stock(request.stock())
-                .category(request.category())
-                .sellerId(sellerId)
-                .active(true)
-                .build();
+                Product entityToSave = Product.builder()
+                                .name(request.name())
+                                .description(request.description())
+                                .price(request.price())
+                                .stock(request.stock())
+                                .category(request.category())
+                                .build();
 
-        ProductResponse expectedResponse = new ProductResponse(
-                1L, "Laptop", "Nice laptop", new BigDecimal("999.99"),
-                10, "Electronics", null, sellerId, true, null, null);
+                Product savedEntity = Product.builder()
+                                .id(1L)
+                                .name(request.name())
+                                .description(request.description())
+                                .price(request.price())
+                                .stock(request.stock())
+                                .category(request.category())
+                                .sellerId(sellerId)
+                                .active(true)
+                                .build();
 
-        when(productMapper.toEntity(request)).thenReturn(entityToSave);
-        when(productRepository.save(any(Product.class))).thenReturn(savedEntity);
-        when(productMapper.toResponse(savedEntity)).thenReturn(expectedResponse);
+                ProductResponse expectedResponse = new ProductResponse(
+                                1L, "Laptop", "Nice laptop", new BigDecimal("999.99"),
+                                10, "Electronics", null, sellerId, true, null, null);
 
-        ProductResponse result = productService.createProduct(request, sellerId);
+                when(productMapper.toEntity(request)).thenReturn(entityToSave);
+                when(productRepository.save(any(Product.class))).thenReturn(savedEntity);
+                when(productMapper.toResponse(savedEntity)).thenReturn(expectedResponse);
 
-        assertThat(result).isEqualTo(expectedResponse);
+                ProductResponse result = productService.createProduct(request, sellerId);
 
-        ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
-        verify(productRepository).save(captor.capture());
-        Product captured = captor.getValue();
-        assertThat(captured.getSellerId()).isEqualTo(sellerId);
-        assertThat(captured.getActive()).isTrue();
-    }
+                assertThat(result).isEqualTo(expectedResponse);
 
-    @Test
-    void createProduct_throwsInvalidPriceException_whenPriceIsNegative() {
-        CreateProductRequest request = new CreateProductRequest(
-                "Laptop", "desc", new BigDecimal("-1.00"), 10, "Electronics", null);
+                ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+                verify(productRepository).save(captor.capture());
+                Product captured = captor.getValue();
+                assertThat(captured.getSellerId()).isEqualTo(sellerId);
+                assertThat(captured.getActive()).isTrue();
+        }
 
-        assertThatThrownBy(() -> productService.createProduct(request, 1L))
-                .isInstanceOf(InvalidPriceException.class)
-                .hasMessageContaining("negative");
+        @Test
+        void createProduct_throwsInvalidPriceException_whenPriceIsNegative() {
+                CreateProductRequest request = new CreateProductRequest(
+                                "Laptop", "desc", new BigDecimal("-1.00"), 10, "Electronics", null);
 
-        verify(productRepository, never()).save(any());
-    }
+                assertThatThrownBy(() -> productService.createProduct(request, 1L))
+                                .isInstanceOf(InvalidPriceException.class)
+                                .hasMessageContaining("negative");
 
-    // ---------------------------------------------------------------------
-    // getProductById
-    // ---------------------------------------------------------------------
+                verify(productRepository, never()).save(any());
+        }
 
-    @Test
-    void getProductById_throwsProductNotFoundException_whenMissing() {
-        when(productRepository.findByIdAndActiveTrue(99L)).thenReturn(Optional.empty());
+        // ---------------------------------------------------------------------
+        // getProductById
+        // ---------------------------------------------------------------------
 
-        assertThatThrownBy(() -> productService.getProductById(99L))
-                .isInstanceOf(ProductNotFoundException.class)
-                .hasMessageContaining("99");
-    }
+        @Test
+        void getProductById_throwsProductNotFoundException_whenMissing() {
+                when(productRepository.findByIdAndActiveTrue(99L)).thenReturn(Optional.empty());
 
-    // ---------------------------------------------------------------------
-    // updateProduct
-    // ---------------------------------------------------------------------
+                assertThatThrownBy(() -> productService.getProductById(99L))
+                                .isInstanceOf(ProductNotFoundException.class)
+                                .hasMessageContaining("99");
+        }
 
-    @Test
-    void updateProduct_throwsNotProductOwnerException_whenSellerDoesNotOwnProduct() {
-        Long productId = 5L;
-        Long ownerId = 1L;
-        Long attackerId = 2L;
+        // ---------------------------------------------------------------------
+        // updateProduct
+        // ---------------------------------------------------------------------
 
-        Product existing = Product.builder()
-                .id(productId)
-                .sellerId(ownerId)
-                .active(true)
-                .price(new BigDecimal("50.00"))
-                .build();
+        @Test
+        void updateProduct_throwsNotProductOwnerException_whenSellerDoesNotOwnProduct() {
+                Long productId = 5L;
+                Long ownerId = 1L;
+                Long attackerId = 2L;
 
-        UpdateProductRequest request = new UpdateProductRequest(
-                "New name", null, new BigDecimal("60.00"), null, null, null);
+                Product existing = Product.builder()
+                                .id(productId)
+                                .sellerId(ownerId)
+                                .active(true)
+                                .price(new BigDecimal("50.00"))
+                                .build();
 
-        when(productRepository.findByIdAndActiveTrue(productId)).thenReturn(Optional.of(existing));
+                UpdateProductRequest request = new UpdateProductRequest(
+                                "New name", null, new BigDecimal("60.00"), null, null, null);
 
-        assertThatThrownBy(() -> productService.updateProduct(productId, request, attackerId))
-                .isInstanceOf(NotProductOwnerException.class)
-                .hasMessageContaining(String.valueOf(productId));
+                when(productRepository.findByIdAndActiveTrue(productId)).thenReturn(Optional.of(existing));
 
-        verify(productRepository, never()).save(any());
-    }
+                assertThatThrownBy(() -> productService.updateProduct(productId, request, attackerId))
+                                .isInstanceOf(NotProductOwnerException.class)
+                                .hasMessageContaining(String.valueOf(productId));
 
-    // ---------------------------------------------------------------------
-    // deleteProduct (soft delete)
-    // ---------------------------------------------------------------------
+                verify(productRepository, never()).save(any());
+        }
 
-    @Test
-    void deleteProduct_setsActiveFalse_andSaves() {
-        Long productId = 5L;
-        Long sellerId = 1L;
+        // ---------------------------------------------------------------------
+        // deleteProduct (soft delete)
+        // ---------------------------------------------------------------------
 
-        Product existing = Product.builder()
-                .id(productId)
-                .sellerId(sellerId)
-                .active(true)
-                .build();
+        @Test
+        void deleteProduct_setsActiveFalse_andSaves() {
+                Long productId = 5L;
+                Long sellerId = 1L;
 
-        when(productRepository.findByIdAndActiveTrue(productId)).thenReturn(Optional.of(existing));
-        when(productRepository.save(existing)).thenReturn(existing);
+                Product existing = Product.builder()
+                                .id(productId)
+                                .sellerId(sellerId)
+                                .active(true)
+                                .build();
 
-        productService.deleteProduct(productId, sellerId);
+                when(productRepository.findByIdAndActiveTrue(productId)).thenReturn(Optional.of(existing));
+                when(productRepository.save(existing)).thenReturn(existing);
 
-        ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
-        verify(productRepository).save(captor.capture());
-        assertThat(captor.getValue().getActive()).isFalse();
-    }
+                productService.deleteProduct(productId, sellerId);
 
-    // ---------------------------------------------------------------------
-    // adjustStock
-    // ---------------------------------------------------------------------
+                ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+                verify(productRepository).save(captor.capture());
+                assertThat(captor.getValue().getActive()).isFalse();
+        }
 
-    @Test
-    void adjustStock_throwsInsufficientStockException_whenDecrementWouldGoNegative() {
-        Long productId = 5L;
-        Product existing = Product.builder()
-                .id(productId)
-                .name("Laptop")
-                .stock(3)
-                .active(true)
-                .build();
+        // ---------------------------------------------------------------------
+        // adjustStock
+        // ---------------------------------------------------------------------
 
-        when(productRepository.findByIdAndActiveTrue(productId)).thenReturn(Optional.of(existing));
+        @Test
+        void adjustStock_throwsInsufficientStockException_whenDecrementWouldGoNegative() {
+                Long productId = 5L;
+                Product existing = Product.builder()
+                                .id(productId)
+                                .name("Laptop")
+                                .stock(3)
+                                .active(true)
+                                .build();
 
-        assertThatThrownBy(() -> productService.adjustStock(productId, 10, "DECREMENT"))
-                .isInstanceOf(InsufficientStockException.class)
-                .hasMessageContaining("Laptop");
+                when(productRepository.findByIdAndActiveTrue(productId)).thenReturn(Optional.of(existing));
 
-        verify(productRepository, never()).save(any());
-    }
+                assertThatThrownBy(() -> productService.adjustStock(productId, 10, "DECREMENT"))
+                                .isInstanceOf(InsufficientStockException.class)
+                                .hasMessageContaining("Laptop");
+
+                verify(productRepository, never()).save(any());
+        }
+
+        // ---------------------------------------------------------------------
+        // stock-level bells (threshold 3, crossing only)
+        // ---------------------------------------------------------------------
+
+        @Test
+        void adjustStock_publishesLowEvent_whenStockCrossesFromFourToThree() {
+                givenProductWithStock(4);
+
+                productService.adjustStock(5L, 1, "DECREMENT");
+
+                ArgumentCaptor<StockLevelEvent> captor = ArgumentCaptor.forClass(StockLevelEvent.class);
+                verify(eventPublisher).publishEvent(captor.capture());
+                assertThat(captor.getValue().stock()).isEqualTo(3);
+                assertThat(captor.getValue().productId()).isEqualTo(5L);
+                assertThat(captor.getValue().sellerId()).isEqualTo(42L);
+        }
+
+        @Test
+        void adjustStock_publishesNothing_whenStockWasAlreadyLow() {
+                givenProductWithStock(3);
+
+                productService.adjustStock(5L, 1, "DECREMENT");
+
+                verifyNoInteractions(eventPublisher);
+        }
+
+        @Test
+        void adjustStock_publishesOnlyDepleted_whenStockJumpsFromFiveToZero() {
+                givenProductWithStock(5);
+
+                productService.adjustStock(5L, 5, "DECREMENT");
+
+                ArgumentCaptor<StockLevelEvent> captor = ArgumentCaptor.forClass(StockLevelEvent.class);
+                verify(eventPublisher).publishEvent(captor.capture());
+                assertThat(captor.getValue().stock()).isZero();
+        }
+
+        @Test
+        void adjustStock_publishesNothing_onRestock() {
+                givenProductWithStock(0);
+
+                productService.adjustStock(5L, 10, "INCREMENT");
+
+                verifyNoInteractions(eventPublisher);
+        }
+
+        private void givenProductWithStock(int stock) {
+                Product product = Product.builder()
+                                .id(5L)
+                                .name("Laptop")
+                                .sellerId(42L)
+                                .stock(stock)
+                                .active(true)
+                                .build();
+                when(productRepository.findByIdAndActiveTrue(5L)).thenReturn(Optional.of(product));
+        }
+
 }

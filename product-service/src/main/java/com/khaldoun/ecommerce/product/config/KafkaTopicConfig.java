@@ -10,6 +10,8 @@ public class KafkaTopicConfig {
 
     public static final String ORDER_CREATED_TOPIC = "order-created";
     public static final String STOCK_RESULT_TOPIC = "stock-result";
+    public static final String STOCK_LOW_TOPIC = "stock-low";
+    public static final String STOCK_DEPLETED_TOPIC = "stock-depleted";
 
     // Same definition as order-service: safe and idempotent, and it means the
     // consumer never starts against a missing topic.
@@ -24,6 +26,22 @@ public class KafkaTopicConfig {
     @Bean
     NewTopic stockResultTopic() {
         return TopicBuilder.name(STOCK_RESULT_TOPIC)
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    NewTopic stockLowTopic() {
+        return TopicBuilder.name(STOCK_LOW_TOPIC)
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    NewTopic stockDepletedTopic() {
+        return TopicBuilder.name(STOCK_DEPLETED_TOPIC)
                 .partitions(3)
                 .replicas(1)
                 .build();

@@ -15,6 +15,7 @@ import com.khaldoun.ecommerce.product.mapper.ProductMapper;
 import com.khaldoun.ecommerce.product.repository.ProductRepository;
 import com.khaldoun.ecommerce.product.repository.ProcessedEventRepository;
 import com.khaldoun.ecommerce.product.domain.ProcessedEvent;
+import com.khaldoun.ecommerce.product.event.StockLevelEvent;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -40,6 +42,9 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
     private final ProcessedEventRepository processedEventRepository;
+    private final ApplicationEventPublisher eventPublisher;
+
+    private static final int LOW_STOCK_THRESHOLD = 3;
 
     @Transactional
     public ProductResponse createProduct(CreateProductRequest request, Long sellerId) {
@@ -111,7 +116,8 @@ public class ProductService {
                 .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + productId));
 
         int delta = "DECREMENT".equalsIgnoreCase(operation) ? -quantity : quantity;
-        int newStock = product.getStock() + delta;
+        int oldStock = product.getStock();
+        int newStock = oldStock + delta;
 
         if (newStock < 0) {
             throw new InsufficientStockException(
@@ -121,12 +127,33 @@ public class ProductService {
         product.setStock(newStock);
         productRepository.save(product);
         log.info("Stock adjusted for product {}: {} -> {} ({})",
-                productId, product.getStock() - delta, newStock, operation);
+                productId, oldStock, newStock, operation);
+
+        publishIfStockLineCrossed(product, oldStock, newStock);
     }
 
     @Transactional(readOnly = true)
     public long countMyProducts(Long sellerId) {
         return productRepository.countBySellerId(sellerId);
+    }
+
+    // Rings a bell only when stock crosses a line going down:
+    // above 3 -> 1..3 is "low", anything -> 0 is "depleted".
+    private void publishIfStockLineCrossed(Product product, int oldStock, int newStock) {
+        boolean becameLow = oldStock > LOW_STOCK_THRESHOLD
+                && newStock <= LOW_STOCK_THRESHOLD
+                && newStock > 0;
+        boolean becameDepleted = oldStock > 0 && newStock == 0;
+
+        if (becameLow || becameDepleted) {
+            eventPublisher.publishEvent(new StockLevelEvent(
+                    UUID.randomUUID(),
+                    product.getId(),
+                    product.getName(),
+                    product.getSellerId(),
+                    newStock,
+                    Instant.now()));
+        }
     }
 
     private Product findActiveProduct(Long id) {
