@@ -6,6 +6,7 @@ import com.khaldoun.ecommerce.product.dto.ProductResponse;
 import com.khaldoun.ecommerce.product.dto.ProductSummaryResponse;
 import com.khaldoun.ecommerce.product.dto.UpdateProductRequest;
 import com.khaldoun.ecommerce.product.event.OrderCreatedEvent;
+import com.khaldoun.ecommerce.product.event.StockResultEvent;
 import com.khaldoun.ecommerce.product.exception.InvalidPriceException;
 import com.khaldoun.ecommerce.product.exception.InsufficientStockException;
 import com.khaldoun.ecommerce.product.exception.NotProductOwnerException;
@@ -23,9 +24,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.Optional;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -142,14 +147,40 @@ public class ProductService {
     }
 
     @Transactional
-    public void applyOrderStockDecrement(UUID eventId, List<OrderCreatedEvent.OrderLine> lines) {
-        if (processedEventRepository.existsById(eventId)) {
-            log.info("Event {} already processed, skipping", eventId);
-            return;
+    public Optional<StockResultEvent> reserveStockForOrder(OrderCreatedEvent event) {
+        if (processedEventRepository.existsById(event.eventId())) {
+            log.info("Event {} already processed, skipping", event.eventId());
+            return Optional.empty();
         }
-        for (OrderCreatedEvent.OrderLine line : lines) {
-            adjustStock(line.productId(), line.quantity(), "DECREMENT");
+
+        // Total needed per product (the same product may appear on two lines)
+        Map<Long, Integer> needed = new LinkedHashMap<>();
+        for (OrderCreatedEvent.OrderLine line : event.items()) {
+            needed.merge(line.productId(), line.quantity(), Integer::sum);
         }
-        processedEventRepository.save(new ProcessedEvent(eventId));
+
+        // Check everything first, so we never decrement half an order
+        String problem = null;
+        for (Map.Entry<Long, Integer> entry : needed.entrySet()) {
+            Optional<Product> product = productRepository.findByIdAndActiveTrue(entry.getKey());
+            // Check if product exists
+            if (product.isEmpty()) {
+                problem = "Product not found: " + entry.getKey();
+                break;
+            }
+            // Check if product exists
+            if (product.get().getStock() < entry.getValue()) {
+                problem = "Not enough stock for: " + product.get().getName();
+                break;
+            }
+        }
+        // If there was a problem, we don't adjust any stock
+        if (problem == null) {
+            needed.forEach((productId, quantity) -> adjustStock(productId, quantity, "DECREMENT"));
+        }
+        // Mark the event as processed
+        processedEventRepository.save(new ProcessedEvent(event.eventId()));
+        return Optional.of(new StockResultEvent(
+                UUID.randomUUID(), event.orderId(), problem == null, problem, Instant.now()));
     }
 }

@@ -9,6 +9,7 @@ import org.springframework.kafka.config.TopicBuilder;
 public class KafkaTopicConfig {
 
     public static final String ORDER_CREATED_TOPIC = "order-created";
+    public static final String STOCK_RESULT_TOPIC = "stock-result";
 
     // Same definition as order-service: safe and idempotent, and it means the
     // consumer never starts against a missing topic.
@@ -19,4 +20,13 @@ public class KafkaTopicConfig {
                 .replicas(1)
                 .build();
     }
+
+    @Bean
+    NewTopic stockResultTopic() {
+        return TopicBuilder.name(STOCK_RESULT_TOPIC)
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
 }
