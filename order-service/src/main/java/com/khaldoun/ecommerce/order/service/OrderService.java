@@ -176,4 +176,16 @@ public class OrderService {
                 orderId, currentStatus, newStatus, sellerId);
         return orderMapper.toOrderResponse(saved);
     }
+
+    // Cancel the order if it has been rejected
+    @Transactional
+    public void cancelIfRejected(Long orderId, String reason) {
+        orderRepository.findById(orderId).ifPresentOrElse(order -> {
+            if (order.getStatus() == OrderStatus.PENDING) {
+                order.setStatus(OrderStatus.CANCELLED);
+                orderRepository.save(order);
+                log.info("Order {} cancelled: {}", orderId, reason);
+            }
+        }, () -> log.warn("Stock result for unknown order {}, ignoring", orderId));
+    }
 }
