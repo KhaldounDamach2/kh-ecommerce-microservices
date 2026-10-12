@@ -60,6 +60,26 @@ services:
     networks:
       - ecommerce-net
 
+  postgres-notification:
+    image: postgres:16-alpine
+    container_name: postgres-notification
+    environment:
+      POSTGRES_DB: notification_db
+      POSTGRES_USER: notification_user
+      POSTGRES_PASSWORD: notification_pass
+    ports:
+      - "5436:5432"
+    volumes:
+      - notification_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notification_user -d notification_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    networks:
+      - ecommerce-net
+
   # ============ EUREKA ============
   eureka-server:
     build: ./eureka-server
@@ -282,6 +302,42 @@ services:
     networks:
       - ecommerce-net
 
+    # ============ NOTIFICATION SERVICE ============
+  notification-service:
+    build: ./notification-service
+    container_name: notification-service
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_PROFILES_ACTIVE: ""
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-notification:5432/notification_db
+      SPRING_DATASOURCE_USERNAME: notification_user
+      SPRING_DATASOURCE_PASSWORD: notification_pass
+      JAVA_OPTS: "-XX:+UseSerialGC -Xms256m -Xmx512m -XX:TieredStopAtLevel=1 -noverify"
+    depends_on:
+      postgres-notification:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8085/actuator/health",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 180s
+    restart: unless-stopped
+    networks:
+      - ecommerce-net
+
   # ============ FRONTEND ============
   frontend:
     build: ./frontend
@@ -371,6 +427,7 @@ volumes:
   auth_db_data:
   product_db_data:
   order_db_data:
+  notification_db_data:
   prometheus_data:
   grafana_data:
   kafka_data:
