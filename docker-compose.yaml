@@ -314,11 +314,14 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-notification:5432/notification_db
       SPRING_DATASOURCE_USERNAME: notification_user
       SPRING_DATASOURCE_PASSWORD: notification_pass
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       JAVA_OPTS: "-XX:+UseSerialGC -Xms256m -Xmx512m -XX:TieredStopAtLevel=1 -noverify"
     depends_on:
       postgres-notification:
         condition: service_healthy
       eureka-server:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     healthcheck:
       test:

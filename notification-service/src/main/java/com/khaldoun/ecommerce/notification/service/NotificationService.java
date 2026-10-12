@@ -1,0 +1,88 @@
+package com.khaldoun.ecommerce.notification.service;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.khaldoun.ecommerce.notification.dto.NotificationResponse;
+import com.khaldoun.ecommerce.notification.exception.NotificationNotFoundException;
+import com.khaldoun.ecommerce.notification.domain.Notification;
+import com.khaldoun.ecommerce.notification.domain.NotificationType;
+import com.khaldoun.ecommerce.notification.domain.ProcessedEvent;
+import com.khaldoun.ecommerce.notification.event.StockLevelEvent;
+import com.khaldoun.ecommerce.notification.repository.NotificationRepository;
+import com.khaldoun.ecommerce.notification.repository.ProcessedEventRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class NotificationService {
+
+    private final NotificationRepository notificationRepository;
+    private final ProcessedEventRepository processedEventRepository;
+
+    @Transactional
+    public void notifySellerAboutStock(StockLevelEvent event, NotificationType type) {
+        // Never trust a letter blindly: without these we cannot do anything useful.
+        if (event.eventId() == null || event.sellerId() == null || event.productId() == null) {
+            log.warn("Ignoring invalid stock event: {}", event);
+            return;
+        }
+        if (processedEventRepository.existsById(event.eventId())) {
+            log.info("Event {} already processed, skipping", event.eventId());
+            return;
+        }
+
+        String name = event.productName();
+        String title;
+        String message;
+        if (type == NotificationType.STOCK_DEPLETED) {
+            title = "Sold out: " + name;
+            message = name + " is out of stock. Restock it to keep selling.";
+        } else {
+            title = "Low stock: " + name;
+            message = "Only " + event.stock() + " left of " + name + ".";
+        }
+
+        notificationRepository.save(Notification.builder()
+                .userId(event.sellerId())
+                .type(type)
+                .title(title)
+                .message(message)
+                .productId(event.productId())
+                .build());
+        processedEventRepository.save(new ProcessedEvent(event.eventId()));
+        log.info("Saved {} notification for seller {}", type, event.sellerId());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<NotificationResponse> getMyNotifications(Long userId, Pageable pageable) {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+                .map(NotificationResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public long countUnread(Long userId) {
+        return notificationRepository.countByUserIdAndReadFalse(userId);
+    }
+
+    @Transactional
+    public void markAsRead(Long id, Long userId) {
+        // Someone else's notification looks exactly like a missing one,
+        // so nobody can find out which ids exist.
+        Notification notification = notificationRepository.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new NotificationNotFoundException("Notification not found with id: " + id));
+        notification.setRead(true);
+    }
+
+    @Transactional
+    public void markAllAsRead(Long userId) {
+        int updated = notificationRepository.markAllAsRead(userId);
+        log.info("Marked {} notifications as read for user {}", updated, userId);
+    }
+
+}

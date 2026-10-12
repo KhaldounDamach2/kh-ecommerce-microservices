@@ -53,6 +53,14 @@ spring:
                 - Path=/api/orders/**
               filters:
                 - StripPrefix=1
+
+            # ============ NOTIFICATION SERVICE ============
+            - id: notification-service-route
+              uri: lb://notification-service
+              predicates:
+                - Path=/api/notifications/**
+              filters:
+                - StripPrefix=1
 eureka:
   client:
     service-url:
