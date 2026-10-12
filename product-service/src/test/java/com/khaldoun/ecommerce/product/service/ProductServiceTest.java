@@ -11,6 +11,9 @@ import com.khaldoun.ecommerce.product.exception.NotProductOwnerException;
 import com.khaldoun.ecommerce.product.exception.ProductNotFoundException;
 import com.khaldoun.ecommerce.product.mapper.ProductMapper;
 import com.khaldoun.ecommerce.product.repository.ProductRepository;
+import com.khaldoun.ecommerce.product.event.OrderCreatedEvent;
+import com.khaldoun.ecommerce.product.event.StockResultEvent;
+import com.khaldoun.ecommerce.product.repository.ProcessedEventRepository;
 
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -24,6 +27,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.math.BigDecimal;
 import java.util.Optional;
+import java.util.List;
+import java.util.UUID;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -46,6 +52,9 @@ class ProductServiceTest {
 
         @Mock
         private ApplicationEventPublisher eventPublisher;
+
+        @Mock
+        private ProcessedEventRepository processedEventRepository;
 
         // ---------------------------------------------------------------------
         // createProduct
@@ -252,6 +261,25 @@ class ProductServiceTest {
                                 .active(true)
                                 .build();
                 when(productRepository.findByIdAndActiveTrue(5L)).thenReturn(Optional.of(product));
+        }
+
+        // ---------------------------------------------------------------------
+        // reserveStockForOrder: never trust a letter blindly
+        // ---------------------------------------------------------------------
+
+        @Test
+        void reserveStockForOrder_rejects_whenQuantityIsNegative() {
+                // A forged letter trying to ADD 1000 items to the stock
+                OrderCreatedEvent forged = new OrderCreatedEvent(
+                                UUID.randomUUID(), 38L, 14L, Instant.now(),
+                                List.of(new OrderCreatedEvent.OrderLine(5L, -1000)));
+
+                Optional<StockResultEvent> result = productService.reserveStockForOrder(forged);
+
+                assertThat(result).isPresent();
+                assertThat(result.get().reserved()).isFalse();
+                assertThat(result.get().reason()).contains("Invalid quantity");
+                verify(productRepository, never()).save(any());
         }
 
 }

@@ -180,22 +180,37 @@ public class ProductService {
             return Optional.empty();
         }
 
+        String problem = null;
+
+        // Never trust a letter blindly: a negative quantity would ADD stock.
+        if (event.items() == null || event.items().isEmpty()) {
+            problem = "Order has no items";
+        }
+
         // Total needed per product (the same product may appear on two lines)
         Map<Long, Integer> needed = new LinkedHashMap<>();
-        for (OrderCreatedEvent.OrderLine line : event.items()) {
-            needed.merge(line.productId(), line.quantity(), Integer::sum);
+        if (problem == null) {
+            for (OrderCreatedEvent.OrderLine line : event.items()) {
+                if (line.quantity() == null || line.quantity() <= 0) {
+                    problem = "Invalid quantity for product: " + line.productId();
+                    break;
+                }
+                needed.merge(line.productId(), line.quantity(), Integer::sum);
+            }
         }
 
         // Check everything first, so we never decrement half an order
-        String problem = null;
         for (Map.Entry<Long, Integer> entry : needed.entrySet()) {
+            if (problem != null) {
+                break;
+            }
             Optional<Product> product = productRepository.findByIdAndActiveTrue(entry.getKey());
             // Check if product exists
             if (product.isEmpty()) {
                 problem = "Product not found: " + entry.getKey();
                 break;
             }
-            // Check if product exists
+            // Check if there is enough stock
             if (product.get().getStock() < entry.getValue()) {
                 problem = "Not enough stock for: " + product.get().getName();
                 break;
@@ -210,4 +225,5 @@ public class ProductService {
         return Optional.of(new StockResultEvent(
                 UUID.randomUUID(), event.orderId(), problem == null, problem, Instant.now()));
     }
+
 }
