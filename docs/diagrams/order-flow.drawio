@@ -1,0 +1,88 @@
+<mxfile host="65bd71144e">
+    <diagram id="order-flow" name="Order Placement (event-driven)">
+        <mxGraphModel dx="1577" dy="1102" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1320" pageHeight="820" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=22;fontStyle=1;" value="Order Placement — Event-Driven Stock Reservation with Kafka" vertex="1">
+                    <mxGeometry height="40" width="800" x="260" y="10" as="geometry"/>
+                </mxCell>
+                <mxCell id="customer" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" value="&lt;b&gt;Customer checks out&lt;/b&gt;&lt;br&gt;authenticated request" vertex="1">
+                    <mxGeometry height="60" width="180" x="20" y="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="gateway" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" value="&lt;b&gt;API Gateway :8080&lt;/b&gt;&lt;br&gt;JWT validated + identity headers" vertex="1">
+                    <mxGeometry height="60" width="220" x="260" y="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="orderSvc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" value="&lt;b&gt;Order Service :8084&lt;/b&gt;&lt;br&gt;Validate request, build order" vertex="1">
+                    <mxGeometry height="60" width="230" x="540" y="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="productGet" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" value="&lt;b&gt;Product Service :8083&lt;/b&gt;&lt;br&gt;GET /products/{id}&lt;br&gt;price + stock pre-check" vertex="1">
+                    <mxGeometry height="70" width="220" x="850" y="75" as="geometry"/>
+                </mxCell>
+                <mxCell id="persist" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" value="&lt;b&gt;Persist order as PENDING&lt;/b&gt;&lt;br&gt;Snapshot product name, image, price&lt;br&gt;and seller at order time" vertex="1">
+                    <mxGeometry height="70" width="230" x="540" y="200" as="geometry"/>
+                </mxCell>
+                <mxCell id="tOrderCreated" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;" value="&lt;b&gt;Kafka · order-created&lt;/b&gt;&lt;br&gt;key = orderId" vertex="1">
+                    <mxGeometry height="60" width="220" x="545" y="330" as="geometry"/>
+                </mxCell>
+                <mxCell id="reserve" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=8;" value="&lt;b&gt;Product Service listener&lt;/b&gt;&lt;br&gt;1. already processed? (processed_event) → skip&lt;br&gt;2. invalid quantity / unknown product → reject&lt;br&gt;3. check &lt;i&gt;every&lt;/i&gt; line first&lt;br&gt;4. decrement all lines or none" vertex="1">
+                    <mxGeometry height="100" width="280" x="850" y="310" as="geometry"/>
+                </mxCell>
+                <mxCell id="tStockResult" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;" value="&lt;b&gt;Kafka · stock-result&lt;/b&gt;&lt;br&gt;reserved true/false + reason" vertex="1">
+                    <mxGeometry height="60" width="220" x="880" y="480" as="geometry"/>
+                </mxCell>
+                <mxCell id="result" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" value="&lt;b&gt;Order Service listener&lt;/b&gt;&lt;br&gt;reserved = true → stays PENDING&lt;br&gt;reserved = false → order CANCELLED" vertex="1">
+                    <mxGeometry height="70" width="230" x="540" y="475" as="geometry"/>
+                </mxCell>
+                <mxCell id="lifecycle" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" value="Seller-managed status progression&lt;br&gt;PENDING → CONFIRMED → SHIPPED → DELIVERED&lt;br&gt;Invalid transitions return HTTP 400" vertex="1">
+                    <mxGeometry height="60" width="320" x="200" y="600" as="geometry"/>
+                </mxCell>
+                <mxCell id="tStockBells" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;" value="&lt;b&gt;Kafka · stock-low / stock-depleted&lt;/b&gt;&lt;br&gt;key = productId · only when a line is crossed" vertex="1">
+                    <mxGeometry height="60" width="250" x="1170" y="180" as="geometry"/>
+                </mxCell>
+                <mxCell id="notify" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" value="&lt;b&gt;Notification Service :8085&lt;/b&gt;&lt;br&gt;in-app notification for the seller&lt;br&gt;+ email via Mailtrap" vertex="1">
+                    <mxGeometry height="70" width="230" x="1180" y="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="noteCommit" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" value="Events are published only &lt;b&gt;after the DB commit&lt;/b&gt;&lt;br&gt;(@TransactionalEventListener AFTER_COMMIT):&lt;br&gt;a rolled-back order is never announced." vertex="1">
+                    <mxGeometry height="70" width="300" x="200" y="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="noteAsync" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" value="The checkout response does not wait for the reservation:&lt;br&gt;if product-service is down, the event waits in Kafka&lt;br&gt;and is processed when it comes back." vertex="1">
+                    <mxGeometry height="60" width="360" x="850" y="600" as="geometry"/>
+                </mxCell>
+                <mxCell id="e1" edge="1" parent="1" source="customer" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=11;" target="gateway" value="POST /api/orders">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2" edge="1" parent="1" source="gateway" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=11;" target="orderSvc" value="trusted user headers">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e3" edge="1" parent="1" source="orderSvc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=11;" target="productGet" value="OpenFeign (sync)">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e4" edge="1" parent="1" source="orderSvc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=11;fillColor=#d5e8d4;strokeColor=#82b366;" target="persist" value="save">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e9" edge="1" parent="1" source="result" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=11;fillColor=#d5e8d4;strokeColor=#82b366;" target="lifecycle" value="order lifecycle">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e5" edge="1" parent="1" source="persist" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#d79b00;fontColor=#994C00;endArrow=block;endFill=1;fontSize=11;" target="tOrderCreated" value="publish after commit">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e6" edge="1" parent="1" source="tOrderCreated" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#d79b00;fontColor=#994C00;endArrow=block;endFill=1;fontSize=11;" target="reserve" value="consume">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e7" edge="1" parent="1" source="reserve" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#d79b00;fontColor=#994C00;endArrow=block;endFill=1;fontSize=11;" target="tStockResult" value="publish result">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e8" edge="1" parent="1" source="tStockResult" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#d79b00;fontColor=#994C00;endArrow=block;endFill=1;fontSize=11;" target="result" value="consume">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e10" edge="1" parent="1" source="reserve" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#d79b00;fontColor=#994C00;endArrow=block;endFill=1;fontSize=11;exitX=1;exitY=0.3;exitDx=0;exitDy=0;" target="tStockBells" value="stock crossed a line">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e11" edge="1" parent="1" source="tStockBells" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#d79b00;fontColor=#994C00;endArrow=block;endFill=1;fontSize=11;" target="notify" value="consume">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

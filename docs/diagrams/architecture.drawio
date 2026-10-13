@@ -1,0 +1,127 @@
+<mxfile host="65bd71144e">
+    <diagram id="architecture" name="Runtime Architecture">
+        <mxGraphModel dx="1577" dy="1102" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1220" pageHeight="900" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=22;fontStyle=1;" value="E-Commerce Microservices — Runtime Architecture" vertex="1">
+                    <mxGeometry height="40" width="700" x="260" y="10" as="geometry"/>
+                </mxCell>
+                <mxCell id="browser" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" value="&lt;b&gt;Browser / React SPA&lt;/b&gt;&lt;br&gt;Vite + TailwindCSS&lt;br&gt;🔔 notification bell&lt;br&gt;Host :5173" vertex="1">
+                    <mxGeometry height="80" width="180" x="20" y="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="gateway" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" value="&lt;b&gt;API Gateway&lt;/b&gt;&lt;br&gt;JWT validation · CORS&lt;br&gt;:8080" vertex="1">
+                    <mxGeometry height="70" width="190" x="300" y="95" as="geometry"/>
+                </mxCell>
+                <mxCell id="eureka" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;" value="&lt;b&gt;Eureka Server&lt;/b&gt;&lt;br&gt;Service Registry&lt;br&gt;:8761" vertex="1">
+                    <mxGeometry height="60" width="180" x="640" y="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="auth" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" value="&lt;b&gt;Auth Service&lt;/b&gt;&lt;br&gt;Register · Login · Tokens&lt;br&gt;:8081" vertex="1">
+                    <mxGeometry height="70" width="200" x="40" y="270" as="geometry"/>
+                </mxCell>
+                <mxCell id="product" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" value="&lt;b&gt;Product Service&lt;/b&gt;&lt;br&gt;Browse · Search · CRUD&lt;br&gt;Stock reservation · :8083" vertex="1">
+                    <mxGeometry height="70" width="200" x="300" y="270" as="geometry"/>
+                </mxCell>
+                <mxCell id="order" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" value="&lt;b&gt;Order Service&lt;/b&gt;&lt;br&gt;Orders · Seller management&lt;br&gt;:8084" vertex="1">
+                    <mxGeometry height="70" width="200" x="560" y="270" as="geometry"/>
+                </mxCell>
+                <mxCell id="notification" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" value="&lt;b&gt;Notification Service&lt;/b&gt;&lt;br&gt;In-app alerts · Email&lt;br&gt;:8085" vertex="1">
+                    <mxGeometry height="70" width="200" x="820" y="270" as="geometry"/>
+                </mxCell>
+                <mxCell id="dbAuth" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="PostgreSQL&lt;br&gt;auth · host :5433" vertex="1">
+                    <mxGeometry height="60" width="130" x="75" y="400" as="geometry"/>
+                </mxCell>
+                <mxCell id="dbProduct" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="PostgreSQL&lt;br&gt;product · host :5434" vertex="1">
+                    <mxGeometry height="60" width="130" x="335" y="400" as="geometry"/>
+                </mxCell>
+                <mxCell id="dbOrder" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="PostgreSQL&lt;br&gt;order · host :5435" vertex="1">
+                    <mxGeometry height="60" width="130" x="595" y="400" as="geometry"/>
+                </mxCell>
+                <mxCell id="dbNotification" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="PostgreSQL&lt;br&gt;notification · host :5436" vertex="1">
+                    <mxGeometry height="60" width="130" x="855" y="400" as="geometry"/>
+                </mxCell>
+                <mxCell id="mailtrap" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;dashed=1;" value="&lt;b&gt;Mailtrap&lt;/b&gt;&lt;br&gt;email sandbox (SMTP)" vertex="1">
+                    <mxGeometry height="60" width="140" x="1060" y="275" as="geometry"/>
+                </mxCell>
+                <mxCell id="kafka" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;" value="&lt;b&gt;Apache Kafka 3.9 (KRaft, no Zookeeper)&lt;/b&gt; · kafka:9092 inside Docker · 127.0.0.1:9094 for the host&lt;br&gt;&lt;br&gt;&lt;b&gt;order-created&lt;/b&gt; order → product &amp;nbsp;·&amp;nbsp; &lt;b&gt;stock-result&lt;/b&gt; product → order &amp;nbsp;·&amp;nbsp; &lt;b&gt;stock-low / stock-depleted&lt;/b&gt; product → notification&lt;br&gt;&lt;b&gt;user-registered&lt;/b&gt; (compacted) auth → notification" vertex="1">
+                    <mxGeometry height="100" width="980" x="40" y="530" as="geometry"/>
+                </mxCell>
+                <mxCell id="network" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" value="Docker Compose network · ecommerce-net · nginx serves the frontend and proxies /api/* to the gateway" vertex="1">
+                    <mxGeometry height="40" width="640" x="40" y="670" as="geometry"/>
+                </mxCell>
+                <mxCell id="monitoring" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" value="Prometheus :9090 + Grafana :3000&lt;br&gt;scrape /actuator/prometheus of all services" vertex="1">
+                    <mxGeometry height="50" width="300" x="720" y="665" as="geometry"/>
+                </mxCell>
+                <mxCell id="portsNote" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" value="Ports shown are host-facing ports unless stated otherwise. Each service owns its database. Solid green = HTTP, orange = Kafka events, dashed purple = service discovery." vertex="1">
+                    <mxGeometry height="40" width="980" x="40" y="730" as="geometry"/>
+                </mxCell>
+                <mxCell id="eBrowserGw" edge="1" parent="1" source="browser" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=11;fillColor=#d5e8d4;strokeColor=#82b366;" target="gateway" value="/api/*">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eGwAuth" edge="1" parent="1" source="gateway" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=11;exitX=0.1;exitY=1;exitDx=0;exitDy=0;fillColor=#d5e8d4;strokeColor=#82b366;" target="auth" value="Auth routes">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eGwProduct" edge="1" parent="1" source="gateway" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=11;exitX=0.4;exitY=1;exitDx=0;exitDy=0;fillColor=#d5e8d4;strokeColor=#82b366;" target="product" value="Product routes">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eGwOrder" edge="1" parent="1" source="gateway" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=11;exitX=0.75;exitY=1;exitDx=0;exitDy=0;fillColor=#d5e8d4;strokeColor=#82b366;" target="order" value="Order routes">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="442" y="210"/>
+                            <mxPoint x="660" y="210"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="eGwNotification" edge="1" parent="1" source="gateway" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=11;exitX=1;exitY=0.75;exitDx=0;exitDy=0;fillColor=#d5e8d4;strokeColor=#82b366;" target="notification" value="Notification routes">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="920" y="148"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="eOrderProduct" edge="1" parent="1" source="order" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=11;" target="product" value="OpenFeign (sync)&lt;br&gt;GET /products/{id}">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eNotifMail" edge="1" parent="1" source="notification" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=11;" target="mailtrap" value="SMTP">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eAuthDb" edge="1" parent="1" source="auth" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;exitX=0.4;exitY=1;exitDx=0;exitDy=0;fillColor=#d5e8d4;strokeColor=#82b366;" target="dbAuth">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eProductDb" edge="1" parent="1" source="product" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;exitX=0.4;exitY=1;exitDx=0;exitDy=0;fillColor=#d5e8d4;strokeColor=#82b366;" target="dbProduct">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eOrderDb" edge="1" parent="1" source="order" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;exitX=0.4;exitY=1;exitDx=0;exitDy=0;fillColor=#d5e8d4;strokeColor=#82b366;" target="dbOrder">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eNotifDb" edge="1" parent="1" source="notification" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;exitX=0.4;exitY=1;exitDx=0;exitDy=0;fillColor=#d5e8d4;strokeColor=#82b366;" target="dbNotification">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="kAuth" edge="1" parent="1" source="auth" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#d79b00;fontColor=#994C00;endArrow=block;endFill=1;fontSize=11;exitX=0.95;exitY=1;exitDx=0;exitDy=0;entryX=0.2;entryY=0;entryDx=0;entryDy=0;" target="kafka" value="publishes">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="kProduct" edge="1" parent="1" source="product" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#d79b00;fontColor=#994C00;startArrow=block;startFill=1;endArrow=block;endFill=1;fontSize=11;exitX=0.95;exitY=1;exitDx=0;exitDy=0;entryX=0.465;entryY=0;entryDx=0;entryDy=0;" target="kafka" value="consumes + publishes">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="kOrder" edge="1" parent="1" source="order" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#d79b00;fontColor=#994C00;startArrow=block;startFill=1;endArrow=block;endFill=1;fontSize=11;exitX=0.95;exitY=1;exitDx=0;exitDy=0;entryX=0.73;entryY=0;entryDx=0;entryDy=0;" target="kafka" value="publishes + consumes">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="kNotification" edge="1" parent="1" source="notification" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#d79b00;fontColor=#994C00;startArrow=block;startFill=1;endArrow=none;fontSize=11;exitX=0.95;exitY=1;exitDx=0;exitDy=0;entryX=0.995;entryY=0;entryDx=0;entryDy=0;" target="kafka" value="consumes">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="dGw" edge="1" parent="1" source="eureka" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;strokeColor=#9673a6;fontColor=#9673a6;endArrow=open;fontSize=11;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="gateway" value="service discovery">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="dOrder" edge="1" parent="1" source="eureka" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;strokeColor=#9673a6;endArrow=open;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.8;entryY=0;entryDx=0;entryDy=0;" target="order">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="dNotification" edge="1" parent="1" source="eureka" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;strokeColor=#9673a6;endArrow=open;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.8;entryY=0;entryDx=0;entryDy=0;" target="notification">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="eurekaNote" parent="1" style="text;html=1;fontSize=11;fontColor=#9673a6;align=left;" value="all services register with Eureka" vertex="1">
+                    <mxGeometry height="20" width="200" x="835" y="60" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

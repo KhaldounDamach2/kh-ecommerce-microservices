@@ -1,0 +1,85 @@
+<mxfile host="65bd71144e">
+    <diagram id="cicd" name="CI/CD Pipeline">
+        <mxGraphModel dx="1186" dy="912" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1220" pageHeight="760" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=22;fontStyle=1;" value="CI/CD — GitHub Actions + CI-gated Pull Deployment" vertex="1">
+                    <mxGeometry height="40" width="700" x="260" y="10" as="geometry"/>
+                </mxCell>
+                <mxCell id="dev" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" value="&lt;b&gt;Developer&lt;/b&gt;&lt;br&gt;git push origin main" vertex="1">
+                    <mxGeometry height="60" width="170" x="20" y="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="github" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=13;" value="&lt;b&gt;GitHub&lt;/b&gt;&lt;br&gt;repository · main branch" vertex="1">
+                    <mxGeometry height="60" width="180" x="250" y="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="actions" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;verticalAlign=top;" value="&lt;b&gt;GitHub Actions · .github/workflows/ci.yml&lt;/b&gt;" vertex="1">
+                    <mxGeometry height="250" width="680" x="500" y="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="backend" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;" value="&lt;b&gt;build-backend&lt;/b&gt; (matrix × 6, in parallel)&lt;br&gt;eureka-server · api-gateway · auth-service&lt;br&gt;product-service · order-service · notification-service&lt;br&gt;&lt;i&gt;./mvnw clean verify&lt;/i&gt; (Java 21, unit tests)" vertex="1">
+                    <mxGeometry height="90" width="330" x="520" y="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="frontend" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;" value="&lt;b&gt;build-frontend&lt;/b&gt;&lt;br&gt;Node 20 · npm ci · vite build" vertex="1">
+                    <mxGeometry height="60" width="330" x="520" y="220" as="geometry"/>
+                </mxCell>
+                <mxCell id="notify" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="&lt;b&gt;notify&lt;/b&gt; (push to main only)&lt;br&gt;runs when both jobs are green&lt;br&gt;uploads deployment-signal artifact&lt;br&gt;with the commit SHA" vertex="1">
+                    <mxGeometry height="90" width="250" x="900" y="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="vm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;verticalAlign=top;" value="&lt;b&gt;Ubuntu VM (VirtualBox, behind NAT)&lt;/b&gt;" vertex="1">
+                    <mxGeometry height="250" width="1160" x="20" y="390" as="geometry"/>
+                </mxCell>
+                <mxCell id="cron" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=12;" value="&lt;b&gt;cron&lt;/b&gt; · every 5 minutes&lt;br&gt;~/ci-deploy.sh" vertex="1">
+                    <mxGeometry height="60" width="190" x="40" y="440" as="geometry"/>
+                </mxCell>
+                <mxCell id="poll" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=12;" value="Query GitHub public API:&lt;br&gt;latest &lt;b&gt;successful&lt;/b&gt; ci.yml run on main&lt;br&gt;+ all check-runs green?" vertex="1">
+                    <mxGeometry height="80" width="260" x="280" y="430" as="geometry"/>
+                </mxCell>
+                <mxCell id="decision" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=12;" value="green SHA&lt;br&gt;≠ local HEAD?" vertex="1">
+                    <mxGeometry height="100" width="150" x="590" y="420" as="geometry"/>
+                </mxCell>
+                <mxCell id="deploy" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="&lt;b&gt;Deploy&lt;/b&gt;&lt;br&gt;git fetch &amp;amp;&amp;amp; git reset --hard origin/main&lt;br&gt;docker compose down&lt;br&gt;docker compose up -d --build" vertex="1">
+                    <mxGeometry height="100" width="350" x="800" y="420" as="geometry"/>
+                </mxCell>
+                <mxCell id="noop" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" value="No change → do nothing" vertex="1">
+                    <mxGeometry height="40" width="160" x="585" y="565" as="geometry"/>
+                </mxCell>
+                <mxCell id="stack" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;" value="15 containers · 6 services + Kafka + 4 PostgreSQL&lt;br&gt;+ frontend + Prometheus + Grafana · log: ~/auto-deploy.log" vertex="1">
+                    <mxGeometry height="60" width="350" x="800" y="555" as="geometry"/>
+                </mxCell>
+                <mxCell id="why" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" value="Why pull instead of push? The VM has no public IP (VirtualBox NAT), so GitHub cannot reach it.&lt;br&gt;The VM polls GitHub instead: no SSH secrets, no tunnel, and a red build is never deployed." vertex="1">
+                    <mxGeometry height="50" width="1160" x="20" y="670" as="geometry"/>
+                </mxCell>
+                <mxCell id="e1" edge="1" parent="1" source="dev" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=11;fillColor=#d5e8d4;strokeColor=#82b366;" target="github" value="push">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2" edge="1" parent="1" source="github" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=11;entryX=0;entryY=0.3;entryDx=0;entryDy=0;fillColor=#d5e8d4;strokeColor=#82b366;" target="actions" value="triggers">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e3" edge="1" parent="1" source="backend" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;" target="notify">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e4" edge="1" parent="1" source="frontend" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;" target="notify">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e5" edge="1" parent="1" source="cron" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;" target="poll">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e6" edge="1" parent="1" source="poll" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;dashed=1;strokeColor=#9673a6;fontColor=#9673a6;endArrow=block;endFill=1;fontSize=11;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="github" value="polls (HTTPS)">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e7" edge="1" parent="1" source="poll" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;" target="decision">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e8" edge="1" parent="1" source="decision" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=11;" target="deploy" value="yes">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e9" edge="1" parent="1" source="decision" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;fontSize=11;" target="noop" value="no">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e10" edge="1" parent="1" source="deploy" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=block;endFill=1;" target="stack">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
