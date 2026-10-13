@@ -6,6 +6,7 @@ import com.khaldoun.ecommerce.notification.domain.NotificationType;
 import com.khaldoun.ecommerce.notification.event.StockLevelEvent;
 import com.khaldoun.ecommerce.notification.repository.NotificationRepository;
 import com.khaldoun.ecommerce.notification.repository.ProcessedEventRepository;
+import com.khaldoun.ecommerce.notification.repository.UserContactRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -32,6 +33,12 @@ class NotificationServiceTest {
 
     @Mock
     private ProcessedEventRepository processedEventRepository;
+
+    @Mock
+    private UserContactRepository userContactRepository;
+
+    @Mock
+    private EmailService emailService;
 
     @InjectMocks
     private NotificationService notificationService;

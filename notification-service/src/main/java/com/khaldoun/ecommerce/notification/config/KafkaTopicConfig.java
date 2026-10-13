@@ -10,6 +10,7 @@ public class KafkaTopicConfig {
 
     public static final String STOCK_LOW_TOPIC = "stock-low";
     public static final String STOCK_DEPLETED_TOPIC = "stock-depleted";
+    public static final String USER_REGISTERED_TOPIC = "user-registered";
 
     // Same definitions as product-service: safe and idempotent, and it means
     // the listener never starts against a missing topic.
@@ -26,6 +27,16 @@ public class KafkaTopicConfig {
         return TopicBuilder.name(STOCK_DEPLETED_TOPIC)
                 .partitions(3)
                 .replicas(1)
+                .build();
+    }
+
+    // Same definition as auth-service (compacted phone book).
+    @Bean
+    NewTopic userRegisteredTopic() {
+        return TopicBuilder.name(USER_REGISTERED_TOPIC)
+                .partitions(3)
+                .replicas(1)
+                .compact()
                 .build();
     }
 }

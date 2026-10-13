@@ -38,6 +38,20 @@ spring:
         spring.json.use.type.headers: false
         spring.json.trusted.packages: com.khaldoun.ecommerce.notification.event
 
+  # Same Mailtrap sandbox as auth-service. Empty defaults so the app still
+  # starts in the IDE without the variables (emails then just fail and are logged).
+  mail:
+    host: sandbox.smtp.mailtrap.io
+    port: 2525
+    username: ${MAILTRAP_USERNAME:}
+    password: ${MAILTRAP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
 eureka:
   client:
     service-url:

@@ -13,6 +13,7 @@ import com.khaldoun.ecommerce.notification.domain.ProcessedEvent;
 import com.khaldoun.ecommerce.notification.event.StockLevelEvent;
 import com.khaldoun.ecommerce.notification.repository.NotificationRepository;
 import com.khaldoun.ecommerce.notification.repository.ProcessedEventRepository;
+import com.khaldoun.ecommerce.notification.repository.UserContactRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,8 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final ProcessedEventRepository processedEventRepository;
+    private final UserContactRepository userContactRepository;
+    private final EmailService emailService;
 
     @Transactional
     public void notifySellerAboutStock(StockLevelEvent event, NotificationType type) {
@@ -57,6 +60,17 @@ public class NotificationService {
                 .build());
         processedEventRepository.save(new ProcessedEvent(event.eventId()));
         log.info("Saved {} notification for seller {}", type, event.sellerId());
+
+        // 1. Look up the seller in our own address book:
+        // userContactRepository.findById(event.sellerId())
+        // 2. If found: emailService.send(contact.getEmail(), title, message)
+        // 3. If not found (sellers who registered before Step 9d):
+        // log "No email known for seller {}, in-app only" and do nothing else.
+        // Tip: Optional has ifPresentOrElse(found -> ..., () -> ...)
+        userContactRepository.findById(event.sellerId())
+                .ifPresentOrElse(
+                        contact -> emailService.send(contact.getEmail(), title, message),
+                        () -> log.info("No email known for seller {}, in-app only", event.sellerId()));
     }
 
     @Transactional(readOnly = true)

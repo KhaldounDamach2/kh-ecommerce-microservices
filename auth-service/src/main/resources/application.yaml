@@ -27,6 +27,16 @@ spring:
     baseline-on-migrate: true
     locations: classpath:db/migration
 
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      properties:
+        enable.idempotence: true
+        spring.json.add.type.headers: false
+
   mail:
     host: sandbox.smtp.mailtrap.io
     port: 2525

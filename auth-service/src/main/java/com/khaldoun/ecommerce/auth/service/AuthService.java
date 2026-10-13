@@ -1,9 +1,11 @@
 package com.khaldoun.ecommerce.auth.service;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,7 @@ import com.khaldoun.ecommerce.auth.dto.MessageResponse;
 import com.khaldoun.ecommerce.auth.dto.RefreshTokenRequest;
 import com.khaldoun.ecommerce.auth.dto.RegisterRequest;
 import com.khaldoun.ecommerce.auth.dto.UserResponse;
+import com.khaldoun.ecommerce.auth.event.UserRegisteredEvent;
 import com.khaldoun.ecommerce.auth.exception.EmailAlreadyExistsException;
 import com.khaldoun.ecommerce.auth.exception.InvalidCredentialsException;
 import com.khaldoun.ecommerce.auth.exception.InvalidTokenException;
@@ -45,6 +48,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final EmailService emailService;
     private final JwtProperties jwtProperties;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public UserResponse register(RegisterRequest request) {
@@ -111,6 +115,15 @@ public class AuthService {
 
         token.setConfirmedAt(now);
         confirmationTokenRepository.save(token);
+
+        // Announce the confirmed user so other services can keep their own copy
+        // (sent to Kafka only after this transaction commits).
+        eventPublisher.publishEvent(new UserRegisteredEvent(
+                UUID.randomUUID(),
+                user.getId(),
+                user.getEmail(),
+                user.getRole().name(),
+                Instant.now()));
 
         emailService.sendWelcomeEmail(user.getEmail());
         log.info("Email confirmed for user {}", user.getEmail());
