@@ -4,3 +4,7 @@
 .env
 .env.*
 !.env.example
+# Office documents and their lock files
+*.xlsx
+~$*
+.~lock.*#
