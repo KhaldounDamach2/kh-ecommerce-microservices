@@ -20,6 +20,7 @@ import Checkout from "./pages/Checkout.jsx";
 import MyOrders from "./pages/orders/MyOrders.jsx";
 import OrderDetail from "./pages/orders/OrderDetail.jsx";
 import IncomingOrders from "./pages/seller/IncomingOrders.jsx";
+import Notifications from "./pages/Notifications.jsx";
 
 function App() {
   return (
@@ -111,6 +112,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["SELLER"]}>
               <IncomingOrders />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <Notifications />
             </ProtectedRoute>
           }
         />

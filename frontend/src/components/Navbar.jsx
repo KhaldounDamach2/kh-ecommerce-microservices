@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
+import NotificationBell from "./NotificationBell";
 
 const dashboardByRole = {
   CUSTOMER: "/dashboard/customer",
@@ -39,6 +40,7 @@ export default function Navbar() {
           </>
         ) : (
           <>
+            <NotificationBell />
             <span>{user.email}</span>
             <span
               className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
