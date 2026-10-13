@@ -73,7 +73,7 @@ A production-shaped e-commerce platform built with **Spring Boot 4 + Spring Clou
 
 ### Prerequisites
 
-Docker Desktop (or Docker + Docker Compose).
+Docker Desktop (or Docker + Docker Compose) with about **6 GB of RAM** available for Docker.
 
 ### Run the entire stack
 
@@ -81,10 +81,16 @@ Docker Desktop (or Docker + Docker Compose).
 git clone https://github.com/KhaldounDamach2/kh-ecommerce-microservices.git
 cd kh-ecommerce-microservices
 cp .env.example .env
+# edit .env first (see the note below)
 docker compose up -d
 ```
 
-The stack has 15 containers; the Java services need 2–3 minutes until `docker compose ps` shows them all as **healthy**. Then:
+> **Before `docker compose up`:** set your own values in `.env`:
+>
+> - `JWT_SECRET` must be **at least 32 characters** (HS256), otherwise auth-service and the gateway will not start.
+> - Registration sends a confirmation email: put your **Mailtrap** sandbox credentials (or your own SMTP account) in `MAILTRAP_USERNAME` / `MAILTRAP_PASSWORD`.
+
+The first start builds all 7 images (Maven downloads included), which takes about **10–20 minutes**; later starts reuse the cached images. The stack has 14 containers, and the Java services need 2–3 minutes until `docker compose ps` shows them all as **healthy**. Then:
 
 | Service                | URL                                                                  |
 | ---------------------- | -------------------------------------------------------------------- |

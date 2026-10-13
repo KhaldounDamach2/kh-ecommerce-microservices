@@ -43,7 +43,7 @@
                 <mxCell id="noop" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" value="No change → do nothing" vertex="1">
                     <mxGeometry height="40" width="160" x="585" y="565" as="geometry"/>
                 </mxCell>
-                <mxCell id="stack" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;" value="15 containers · 6 services + Kafka + 4 PostgreSQL&lt;br&gt;+ frontend + Prometheus + Grafana · log: ~/auto-deploy.log" vertex="1">
+                <mxCell id="stack" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;" value="14 containers · 6 services + Kafka + 4 PostgreSQL&lt;br&gt;+ frontend + Prometheus + Grafana · log: ~/auto-deploy.log" vertex="1">
                     <mxGeometry height="60" width="350" x="800" y="555" as="geometry"/>
                 </mxCell>
                 <mxCell id="why" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" value="Why pull instead of push? The VM has no public IP (VirtualBox NAT), so GitHub cannot reach it.&lt;br&gt;The VM polls GitHub instead: no SSH secrets, no tunnel, and a red build is never deployed." vertex="1">
