@@ -8,3 +8,7 @@
 *.xlsx
 ~$*
 .~lock.*#
+
+# Personal notes inside service folders (root README.md and PROJECT_CONTEXT_status.md stay tracked)
+/*/**/*.md
+!frontend/README.md
