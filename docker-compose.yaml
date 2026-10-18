@@ -346,6 +346,29 @@ services:
     networks:
       - ecommerce-net
 
+  # ============ AI SERVICE (Python / FastAPI) ============
+  ai-service:
+    build: ./ai-service
+    container_name: ai-service
+    ports:
+      - "8086:8086"
+    healthcheck:
+      # The slim Python image has no wget/curl, so Python itself does the check.
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8086/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - ecommerce-net
+
   # ============ FRONTEND ============
   frontend:
     build: ./frontend
