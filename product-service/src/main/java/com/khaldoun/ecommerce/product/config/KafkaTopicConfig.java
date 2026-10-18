@@ -12,6 +12,7 @@ public class KafkaTopicConfig {
     public static final String STOCK_RESULT_TOPIC = "stock-result";
     public static final String STOCK_LOW_TOPIC = "stock-low";
     public static final String STOCK_DEPLETED_TOPIC = "stock-depleted";
+    public static final String ORDER_CREATED_DLT = "order-created-dlt";
 
     // Same definition as order-service: safe and idempotent, and it means the
     // consumer never starts against a missing topic.
@@ -42,6 +43,16 @@ public class KafkaTopicConfig {
     @Bean
     NewTopic stockDepletedTopic() {
         return TopicBuilder.name(STOCK_DEPLETED_TOPIC)
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    // Dead-letter topic ("returned mail"): same partition count, because a
+    // failed message is parked in the same partition number it came from.
+    @Bean
+    NewTopic orderCreatedDltTopic() {
+        return TopicBuilder.name(ORDER_CREATED_DLT)
                 .partitions(3)
                 .replicas(1)
                 .build();
