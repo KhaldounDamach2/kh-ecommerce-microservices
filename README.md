@@ -262,6 +262,7 @@ flowchart LR
 | `stock-low`       | product-service → notification-service | productId | Stock crossed the threshold (above 3 → 1..3), rung once per crossing |
 | `stock-depleted`  | product-service → notification-service | productId | Stock reached 0                                                      |
 | `user-registered` | auth-service → notification-service    | userId    | A user confirmed their email; **compacted** topic (latest per user)  |
+| `<topic>-dlt`     | any consumer → (people, replay)         | same key  | Dead-letter topics: messages that failed, with the error in headers  |
 
 ### Order flow
 
@@ -279,6 +280,10 @@ flowchart LR
 - **Event-carried state transfer**: notification-service keeps its own `user_contact` table instead of calling auth-service, so emails keep working when auth-service is down.
 - **Defense in depth**: consumers validate every event (e.g. quantity must be > 0) and never trust a message blindly; the external Kafka listener is bound to `127.0.0.1` only.
 - **Best-effort side effects**: the in-app notification is saved first; a failing email is logged and never breaks event processing.
+- **Retries with exponential backoff**: a failing message is retried after 1 s, 2 s and 4 s, so short outages (e.g. a database restart) heal by themselves.
+- **Dead-letter topics**: after the last retry, the message is parked in `<topic>-dlt` (same partition, exception details in the headers) instead of being lost. Once the cause is fixed, it can be replayed to the original topic; idempotent consumers make the replay safe.
+- **Poison-pill protection**: an `ErrorHandlingDeserializer` wraps the JSON deserializer, so unreadable messages go to the DLT instead of blocking their partition forever.
+- **Permanent vs. temporary errors**: invalid events (e.g. missing `eventId`) raise `InvalidEventException`, which is marked non-retryable and goes straight to the DLT.
 
 The remaining synchronous Feign call forwards `X-User-Id`/`X-User-Role` through `FeignConfig.RequestInterceptor` (OpenFeign + Apache HC5).
 
@@ -411,7 +416,7 @@ The user id always comes from the gateway's trusted `X-User-Id` header, never fr
 - [x] CI/CD pipeline (GitHub Actions + auto-deploy to Ubuntu VM)
 - [x] Kafka event bus + notification-service (in-app + email stock alerts)
 - [x] Choreography saga for order placement (reserve stock or cancel the order)
-- [ ] Kafka retries + dead-letter topic
+- [x] Kafka retries with exponential backoff + dead-letter topics
 - [ ] Transactional outbox (no lost event if Kafka is unreachable right after a commit)
 - [ ] Public URL / cloud deployment (Oracle Cloud free tier)
 - [ ] Kafka security (SASL authentication + ACLs)

@@ -128,9 +128,19 @@ idempotent consumers (`processed_event` table), all-or-nothing stock
 reservation, keys for per-entity ordering, consumers validate every event
 (e.g. quantity > 0), Kafka external listener bound to 127.0.0.1.
 
-Known gaps (planned): no retry/dead-letter topic yet (Step 10); Kafka has no
-SASL/ACLs (network isolation only); if a send fails after commit the event is
-lost (outbox pattern would fix this).
+Failure handling (Step 10, all consumers): `ErrorHandlingDeserializer` (poison
+pills no longer block a partition), `DefaultErrorHandler` with 3 retries and
+exponential backoff (1 s, 2 s, 4 s), then `DeadLetterPublishingRecoverer` →
+`<topic>-dlt` (same partition, error details in `kafka_dlt-*` headers).
+DLT topics: order-created-dlt, stock-result-dlt, stock-low-dlt,
+stock-depleted-dlt, user-registered-dlt. product-service throws a non-retryable
+`InvalidEventException` for events without eventId/orderId. Replay = copy the
+message from the DLT back to the original topic (safe thanks to idempotency).
+
+Known gaps (planned): Kafka has no SASL/ACLs (network isolation only); if a
+send fails after commit the event is lost (outbox pattern would fix this);
+order- and notification-service don't use `InvalidEventException` yet
+(notification drops invalid events with a warning).
 
 ---
 
