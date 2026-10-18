@@ -16,6 +16,7 @@ import com.khaldoun.ecommerce.product.repository.ProductRepository;
 import com.khaldoun.ecommerce.product.repository.ProcessedEventRepository;
 import com.khaldoun.ecommerce.product.domain.ProcessedEvent;
 import com.khaldoun.ecommerce.product.event.StockLevelEvent;
+import com.khaldoun.ecommerce.product.exception.InvalidEventException;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -175,6 +176,15 @@ public class ProductService {
 
     @Transactional
     public Optional<StockResultEvent> reserveStockForOrder(OrderCreatedEvent event) {
+        // TODO (you): check the envelope first.
+        // If event.eventId() or event.orderId() is null, throw
+        // new InvalidEventException("order-created without eventId or orderId: " +
+        // event)
+        // (we can neither de-duplicate nor answer such an event)
+        if (event.eventId() == null || event.orderId() == null) {
+            throw new InvalidEventException("order-created without eventId or orderId: " + event);
+        }
+
         if (processedEventRepository.existsById(event.eventId())) {
             log.info("Event {} already processed, skipping", event.eventId());
             return Optional.empty();

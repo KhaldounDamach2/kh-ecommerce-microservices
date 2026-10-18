@@ -1,5 +1,7 @@
 package com.khaldoun.ecommerce.product.config;
 
+import com.khaldoun.ecommerce.product.exception.InvalidEventException;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -49,7 +51,13 @@ public class KafkaErrorHandlingConfig {
         backOff.setMaxInterval(10_000L);
 
         // combine both.
-        // return new DefaultErrorHandler(recoverer, backOff);
-        return new DefaultErrorHandler(recoverer, backOff);
+        DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer, backOff);
+
+        // TODO (you): bad data never gets better by waiting.
+        // errorHandler.addNotRetryableExceptions(InvalidEventException.class);
+        // (and add the import for InvalidEventException)
+        errorHandler.addNotRetryableExceptions(InvalidEventException.class);
+
+        return errorHandler;
     }
 }

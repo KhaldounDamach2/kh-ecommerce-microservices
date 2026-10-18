@@ -6,6 +6,7 @@ import com.khaldoun.ecommerce.product.dto.CreateProductRequest;
 import com.khaldoun.ecommerce.product.dto.ProductResponse;
 import com.khaldoun.ecommerce.product.dto.UpdateProductRequest;
 import com.khaldoun.ecommerce.product.exception.InsufficientStockException;
+import com.khaldoun.ecommerce.product.exception.InvalidEventException;
 import com.khaldoun.ecommerce.product.exception.InvalidPriceException;
 import com.khaldoun.ecommerce.product.exception.NotProductOwnerException;
 import com.khaldoun.ecommerce.product.exception.ProductNotFoundException;
@@ -14,7 +15,6 @@ import com.khaldoun.ecommerce.product.repository.ProductRepository;
 import com.khaldoun.ecommerce.product.event.OrderCreatedEvent;
 import com.khaldoun.ecommerce.product.event.StockResultEvent;
 import com.khaldoun.ecommerce.product.repository.ProcessedEventRepository;
-
 import org.springframework.context.ApplicationEventPublisher;
 
 import org.junit.jupiter.api.Test;
@@ -280,6 +280,16 @@ class ProductServiceTest {
                 assertThat(result.get().reserved()).isFalse();
                 assertThat(result.get().reason()).contains("Invalid quantity");
                 verify(productRepository, never()).save(any());
+        }
+
+        @Test
+        void reserveStockForOrder_throwsInvalidEvent_whenEventIdIsMissing() {
+                OrderCreatedEvent noId = new OrderCreatedEvent(
+                                null, 999L, 1L, Instant.now(),
+                                List.of(new OrderCreatedEvent.OrderLine(11L, 1)));
+
+                assertThatThrownBy(() -> productService.reserveStockForOrder(noId))
+                                .isInstanceOf(InvalidEventException.class);
         }
 
 }
