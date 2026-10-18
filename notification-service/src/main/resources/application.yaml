@@ -32,11 +32,20 @@ spring:
       auto-offset-reset: earliest
       enable-auto-commit: false
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+      # The safety net: if JSON cannot be read, the error is handed to the
+      # error handler instead of blocking the partition forever.
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
       properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
         spring.json.value.default.type: com.khaldoun.ecommerce.notification.event.StockLevelEvent
         spring.json.use.type.headers: false
         spring.json.trusted.packages: com.khaldoun.ecommerce.notification.event
+    # Only used to publish failed messages to the dead-letter topics.
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      properties:
+        spring.json.add.type.headers: false
 
   # Same Mailtrap sandbox as auth-service. Empty defaults so the app still
   # starts in the IDE without the variables (emails then just fail and are logged).

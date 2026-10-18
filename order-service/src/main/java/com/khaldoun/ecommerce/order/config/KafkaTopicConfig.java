@@ -10,6 +10,7 @@ public class KafkaTopicConfig {
 
     public static final String ORDER_CREATED_TOPIC = "order-created";
     public static final String STOCK_RESULT_TOPIC = "stock-result";
+    public static final String STOCK_RESULT_DLT = "stock-result-dlt";
 
     @Bean
     NewTopic orderCreatedTopic() {
@@ -22,6 +23,16 @@ public class KafkaTopicConfig {
     @Bean
     NewTopic stockResultTopic() {
         return TopicBuilder.name(STOCK_RESULT_TOPIC)
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    // Dead-letter topics ("returned mail"): same partition count as the
+    // originals, because a failed message keeps its partition number.
+    @Bean
+    NewTopic stockResultDltTopic() {
+        return TopicBuilder.name(STOCK_RESULT_DLT)
                 .partitions(3)
                 .replicas(1)
                 .build();

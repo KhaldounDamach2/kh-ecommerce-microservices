@@ -38,8 +38,11 @@ spring:
       group-id: order-service
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+      # The safety net: if JSON cannot be read, the error is handed to the
+      # error handler instead of blocking the partition forever.
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
       properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
         spring.json.value.default.type: com.khaldoun.ecommerce.order.event.StockResultEvent
         spring.json.use.type.headers: false
         spring.json.trusted.packages: com.khaldoun.ecommerce.order.event
