@@ -1,4 +1,6 @@
 #   1. import FastAPI and Header from fastapi
+import logging
+
 from fastapi import FastAPI, Header
 from pydantic import BaseModel, Field
 
@@ -6,6 +8,9 @@ from app.llm import ask
 
 
 #   2. create the app object
+# Show our own INFO logs (tool calls) next to uvicorn's logs.
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s - %(message)s")
+
 app = FastAPI(title="ai-service")
 
 #   3. GET /health      -> {"status": "UP"}               (Docker healthcheck, not via the gateway)
