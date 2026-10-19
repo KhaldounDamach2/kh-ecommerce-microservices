@@ -355,6 +355,7 @@ services:
     environment:
       GROQ_API_KEY: ${GROQ_API_KEY}
       GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-20b}
+      PRODUCT_SERVICE_URL: http://product-service:8083
     healthcheck:
       # The slim Python image has no wget/curl, so Python itself does the check.
       test:
