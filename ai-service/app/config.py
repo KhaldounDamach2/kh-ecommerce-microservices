@@ -9,6 +9,7 @@ GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
 # Where the tools find the other services. The default fits a local run
 # (ports published on localhost); docker-compose sets the container names.
 PRODUCT_SERVICE_URL = os.environ.get("PRODUCT_SERVICE_URL", "http://localhost:8083")
+ORDER_SERVICE_URL = os.environ.get("ORDER_SERVICE_URL", "http://localhost:8084")
 
 # Fail fast at startup with a clear message (same idea as JWT_SECRET in auth-service).
 if not GROQ_API_KEY:

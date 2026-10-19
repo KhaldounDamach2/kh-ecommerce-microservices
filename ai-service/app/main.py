@@ -1,10 +1,11 @@
 #   1. import FastAPI and Header from fastapi
 import logging
 
-from fastapi import FastAPI, Header
+from fastapi import Depends, FastAPI, Header
 from pydantic import BaseModel, Field
 
 from app.llm import ask
+from app.auth import CurrentUser, get_current_user
 
 
 #   2. create the app object
@@ -39,5 +40,5 @@ class ChatResponse(BaseModel):
 
 #@app.post(...) is @PostMapping. Because the parameter has the type ChatRequest, FastAPI reads the JSON body into it, like @RequestBody.
 @app.post("/ai/chat")
-def chat(request: ChatRequest) -> ChatResponse:
-    return ChatResponse(reply=ask(request.message))
+def chat(request: ChatRequest, user: CurrentUser = Depends(get_current_user)) -> ChatResponse:
+    return ChatResponse(reply=ask(request.message, user))
