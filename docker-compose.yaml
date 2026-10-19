@@ -351,11 +351,13 @@ services:
     build: ./ai-service
     container_name: ai-service
     ports:
-      - "8086:8086"
+      # Only reachable from this machine; other computers must go through the gateway.
+      - "127.0.0.1:8086:8086"
     environment:
       GROQ_API_KEY: ${GROQ_API_KEY}
       GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-20b}
       PRODUCT_SERVICE_URL: http://product-service:8083
+      ORDER_SERVICE_URL: http://order-service:8084
     healthcheck:
       # The slim Python image has no wget/curl, so Python itself does the check.
       test:
