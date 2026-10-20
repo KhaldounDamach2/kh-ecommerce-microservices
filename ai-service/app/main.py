@@ -1,11 +1,13 @@
 #   1. import FastAPI and Header from fastapi
 import logging
 
-from fastapi import Depends, FastAPI, Header
+from fastapi import Depends, FastAPI, Header, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from app.llm import ask
 from app.auth import CurrentUser, get_current_user
+from app.errors import AssistantUnavailableError
 
 
 #   2. create the app object
@@ -13,6 +15,16 @@ from app.auth import CurrentUser, get_current_user
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s - %(message)s")
 
 app = FastAPI(title="ai-service")
+
+
+# Central error mapping (like @ControllerAdvice): the AI provider failed -> 503 with a
+# friendly message. The details are already in the log (written in llm.py).
+@app.exception_handler(AssistantUnavailableError)
+async def assistant_unavailable(request: Request, exc: AssistantUnavailableError) -> JSONResponse:
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "The assistant is not available right now. Please try again in a moment."},
+    )
 
 #   3. GET /health      -> {"status": "UP"}               (Docker healthcheck, not via the gateway)
 @app.get("/health")
