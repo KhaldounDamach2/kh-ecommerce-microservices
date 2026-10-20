@@ -17,6 +17,9 @@ CHAT_TIME_BUDGET_SECONDS = 40.0  # everything for one chat: all Groq rounds + to
 GROQ_TIMEOUT_SECONDS = 15.0  # one Groq call (and never more than the budget has left)
 TOOL_TIMEOUT_SECONDS = 5.0  # one call to product-service / order-service
 
+# Rate limit: protects the free Groq quota. A blocked message never reaches Groq.
+CHAT_LIMIT_PER_MINUTE = 10  # chat messages per user in any 60-second window
+
 # Fail fast at startup with a clear message (same idea as JWT_SECRET in auth-service).
 if not GROQ_API_KEY:
     raise RuntimeError("GROQ_API_KEY is not set. Put it in the .env file in the project root.")

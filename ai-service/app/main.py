@@ -8,14 +8,13 @@ from pydantic import BaseModel, Field
 from app.llm import ask
 from app.auth import CurrentUser, get_current_user
 from app.errors import AssistantUnavailableError
-
+from app.rate_limit import enforce_chat_limit
 
 #   2. create the app object
 # Show our own INFO logs (tool calls) next to uvicorn's logs.
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s - %(message)s")
 
 app = FastAPI(title="ai-service")
-
 
 # Central error mapping (like @ControllerAdvice): the AI provider failed -> 503 with a
 # friendly message. The details are already in the log (written in llm.py).
@@ -52,5 +51,5 @@ class ChatResponse(BaseModel):
 
 #@app.post(...) is @PostMapping. Because the parameter has the type ChatRequest, FastAPI reads the JSON body into it, like @RequestBody.
 @app.post("/ai/chat")
-def chat(request: ChatRequest, user: CurrentUser = Depends(get_current_user)) -> ChatResponse:
+def chat(request: ChatRequest, user: CurrentUser = Depends(enforce_chat_limit)) -> ChatResponse:
     return ChatResponse(reply=ask(request.message, user))
