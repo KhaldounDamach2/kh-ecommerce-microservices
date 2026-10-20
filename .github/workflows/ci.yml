@@ -62,9 +62,34 @@ jobs:
         working-directory: ./frontend
         run: npm run build
 
+  test-ai-service:
+    name: Test ai-service (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13" # same as the Docker image
+          cache: "pip"
+          cache-dependency-path: ai-service/requirements*.txt
+
+      - name: Install dependencies
+        working-directory: ./ai-service
+        run: pip install -r requirements-dev.txt
+
+      # No Groq key and no network needed: the tests use a fake Groq and fake services.
+      - name: Run tests
+        working-directory: ./ai-service
+        run: python -m pytest -v
+
+      - name: Build Docker image
+        run: docker build -t ai-service-ci ./ai-service
+
   notify:
     name: Signal Deployment Ready
-    needs: [build-backend, build-frontend]
+    needs: [build-backend, build-frontend, test-ai-service]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
@@ -75,7 +100,7 @@ jobs:
             "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "commit": "${{ github.sha }}",
             "status": "ready",
-            "message": "All 5 services built + tested, frontend built"
+            "message": "All 6 Java services built + tested, ai-service tested, frontend built"
           }
           EOF
           cat deployment-signal.json
