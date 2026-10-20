@@ -3,6 +3,9 @@
 import logging
 
 import groq
+import time
+import httpx
+
 
 from app.errors import AssistantUnavailableError
 
@@ -15,8 +18,13 @@ from app.tools import run_tool, tools_for
 from app.auth import CurrentUser
 
 
-#   2. create one Groq client (with a timeout)
-client = Groq(api_key=config.GROQ_API_KEY, timeout=30.0)
+#   2. The Groq client: a separate connect timeout, and no automatic retries:
+client = Groq(
+    api_key=config.GROQ_API_KEY,
+    timeout=httpx.Timeout(config.GROQ_TIMEOUT_SECONDS, connect=3.0),
+    max_retries=0,
+)
+
 
 
 # Safety net: the AI may ask for tools again and again. After this many rounds we stop.
@@ -69,13 +77,24 @@ def ask(user_message: str, user: CurrentUser) -> str:
         {"role": "system", "content": build_system_prompt(user)},
         {"role": "user", "content": user_message},
     ]
+# time.monotonic() is a clock that only moves forward, like Java's System.nanoTime()
+    deadline = time.monotonic() + config.CHAT_TIME_BUDGET_SECONDS
 
     for _ in range(MAX_TOOL_ROUNDS):
+
+        time_left = deadline - time.monotonic()
+
+        if time_left < 1:
+            log.warning("Chat for user %s ran out of time", user.id)
+            raise AssistantUnavailableError()
+
         try:
             response = client.chat.completions.create(
                 model=config.GROQ_MODEL,
                 messages=messages,
                 tools=tools_for(user),
+#  min(a, b) is the smaller of the two, like Math.min(a, b).                
+                timeout=min(config.GROQ_TIMEOUT_SECONDS, time_left),
             )
 # 1- except groq.APIError as error: is Java's catch (APIError error). Because APIError is the parent class, it catches all of them: timeout, 400, 401, 429, 500.
 # 2- raise AssistantUnavailableError() from error is Java's throw new AssistantUnavailableError(error). 
