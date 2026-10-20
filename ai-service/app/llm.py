@@ -72,9 +72,10 @@ def build_system_prompt(user: CurrentUser) -> str:
         prompt += SELLER_PROMPT
     return prompt + f"The current user's role is {user.role}."
 
-def ask(user_message: str, user: CurrentUser) -> str:
+def ask(user_message: str, user: CurrentUser, history: list[dict] | None = None) -> str:
     messages = [
         {"role": "system", "content": build_system_prompt(user)},
+        *(history or []),
         {"role": "user", "content": user_message},
     ]
 # time.monotonic() is a clock that only moves forward, like Java's System.nanoTime()

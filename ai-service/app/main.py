@@ -4,6 +4,7 @@ import logging
 from fastapi import Depends, FastAPI, Header, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from typing import Literal
 
 from app.llm import ask
 from app.auth import CurrentUser, get_current_user
@@ -40,11 +41,15 @@ def whoami(
 
 #class ChatRequest(BaseModel): is a class that extends BaseModel (Python writes the parent in ( )).
 #  It's a DTO, like your Java record LoginRequest(...).
+class ChatTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=4000)
+
+
 class ChatRequest(BaseModel):
-#Field(min_length=1, max_length=2000) is the same as @NotBlank @Size(max = 2000). 
-# If the message is empty or too long, FastAPI answers 422 automatically, before your code runs. 
-# The max length also protects your free token limit.
     message: str = Field(min_length=1, max_length=2000)
+    history: list[ChatTurn] = Field(default_factory=list, max_length=10)
+
 
 class ChatResponse(BaseModel):
     reply: str
@@ -52,4 +57,5 @@ class ChatResponse(BaseModel):
 #@app.post(...) is @PostMapping. Because the parameter has the type ChatRequest, FastAPI reads the JSON body into it, like @RequestBody.
 @app.post("/ai/chat")
 def chat(request: ChatRequest, user: CurrentUser = Depends(enforce_chat_limit)) -> ChatResponse:
-    return ChatResponse(reply=ask(request.message, user))
+    history = [turn.model_dump() for turn in request.history]
+    return ChatResponse(reply=ask(request.message, user, history))
