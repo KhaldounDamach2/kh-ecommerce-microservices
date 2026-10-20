@@ -14,6 +14,11 @@ from app.auth import CurrentUser
 
 log = logging.getLogger(__name__)
 
+# One shared HTTP client for all tools: it keeps connections open and reuses them
+# (like one RestClient bean in Spring instead of a new one per call).
+# connect=2.0: give up quickly when a service cannot be reached at all.
+http = httpx.Client(timeout=httpx.Timeout(config.TOOL_TIMEOUT_SECONDS, connect=2.0))
+
 SEARCH_PRODUCTS_TOOL = {
     "type": "function",
     "function": {
@@ -134,10 +139,9 @@ def search_products(keyword: str, max_price: float | None = None) -> list[dict]:
 
 
 #1. GET {PRODUCT_SERVICE_URL}/products/search?q=keyword&size=10  (5 s timeout)
-    response = httpx.get(
+    response = http.get(
         f"{config.PRODUCT_SERVICE_URL}/products/search",
         params={"q": keyword, "size": 10},
-        timeout=5.0,
     )
 #   2. take the "content" list from the JSON page
     response.raise_for_status()
@@ -175,11 +179,10 @@ def _user_headers(user: CurrentUser) -> dict:
 
 def _fetch_my_orders_page(user: CurrentUser, page: int, size: int) -> dict:
     # order-service returns the customer's orders newest first, as a Spring Page.
-    response = httpx.get(
+    response = http.get(
         f"{config.ORDER_SERVICE_URL}/orders/mine",
         params={"page": page, "size": size},
         headers=_user_headers(user),
-        timeout=5.0,
     )
     response.raise_for_status()
     return response.json()
@@ -240,10 +243,9 @@ def get_order_by_number(user: CurrentUser, order_number: int) -> dict:
     order_number = int(order_number)  # never trust AI arguments: "41/../admin" -> error
 
 #1. GET {ORDER_SERVICE_URL}/orders/{order_number} with _user_headers(user)
-    response = httpx.get(
+    response = http.get(
         f"{config.ORDER_SERVICE_URL}/orders/{order_number}",
         headers=_user_headers(user),
-        timeout=5.0,
     )
 
 #2. 403 (not yours) and 404 (does not exist) -> the SAME error answer
