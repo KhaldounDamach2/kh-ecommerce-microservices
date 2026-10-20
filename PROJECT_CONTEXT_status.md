@@ -2,7 +2,8 @@
 
 A full-stack e-commerce platform built with Spring Boot 4 + React, featuring
 6 backend microservices with service discovery, API gateway, JWT auth,
-role-based access control and event-driven communication over Apache Kafka.
+role-based access control and event-driven communication over Apache Kafka,
+plus a Python/FastAPI AI shopping assistant (LLM tool use on Groq).
 Fully dockerized.
 
 ---
@@ -23,8 +24,9 @@ Fully dockerized.
 | **product-service**      | 8083 | Product CRUD (SELLER), browse/search (all), stock reservation via Kafka | postgres-product :5434      |
 | **order-service**        | 8084 | Order placement, order history, seller order management                 | postgres-order :5435        |
 | **notification-service** | 8085 | Seller stock alerts: in-app notifications + Mailtrap email              | postgres-notification :5436 |
+| **ai-service** (Python)  | 8086 | AI shopping assistant: FastAPI + Groq LLM tool use, `POST /api/ai/chat` | — (stateless)               |
 | **kafka**                | 9094 | Event broker, KRaft mode (host port bound to 127.0.0.1)                 | —                           |
-| **frontend**             | 5173 | React SPA (auth, products, cart, orders, notification bell)             | —                           |
+| **frontend**             | 5173 | React SPA (auth, products, cart, orders, notification bell, AI chat)    | —                           |
 
 ---
 
@@ -193,6 +195,7 @@ order- and notification-service don't use `InvalidEventException` yet
 
 - 4 Postgres instances (auth, product, order, notification)
 - 6 Spring Boot services (multi-stage Dockerfiles: JDK build → JRE runtime)
+- 1 Python ai-service (python:3.13-slim, non-root user)
 - 1 Kafka broker (apache/kafka 3.9, KRaft mode, `kafka_data` volume)
 - 1 nginx-served React frontend
 - 1 Prometheus (metrics scraper, TSDB)
@@ -205,23 +208,31 @@ order- and notification-service don't use `InvalidEventException` yet
 - **JWT_SECRET must be identical** between `api-gateway` and `auth-service`
 - Mail credentials (`MAILTRAP_USERNAME`, `MAILTRAP_PASSWORD`) on auth-service and notification-service
 - Kafka clients use `SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092` in containers, `localhost:9094` from the IDE
+- ai-service needs `GROQ_API_KEY` (and optionally `GROQ_MODEL`) from `.env`; it stops at startup without a key
 
 ### Ports (host ↔ container)
+
+Only frontend, gateway and Grafana are published to the network. Everything else is bound to
+`127.0.0.1`: the services trust the gateway's `X-User-Id` / `X-User-Role` headers, so they must
+not be reachable from outside. On the VM, use an SSH tunnel (`ssh -L`) for Eureka/Prometheus.
 
 | Service               | Host           | Container |
 | --------------------- | -------------- | --------- |
 | frontend              | 5173           | 80        |
 | api-gateway           | 8080           | 8080      |
-| auth-service          | 8081           | 8081      |
-| product-service       | 8083           | 8083      |
-| order-service         | 8084           | 8084      |
-| notification-service  | 8085           | 8085      |
-| eureka-server         | 8761           | 8761      |
+| grafana               | 3000           | 3000      |
+| auth-service          | 127.0.0.1:8081 | 8081      |
+| product-service       | 127.0.0.1:8083 | 8083      |
+| order-service         | 127.0.0.1:8084 | 8084      |
+| notification-service  | 127.0.0.1:8085 | 8085      |
+| ai-service            | 127.0.0.1:8086 | 8086      |
+| eureka-server         | 127.0.0.1:8761 | 8761      |
+| prometheus            | 127.0.0.1:9090 | 9090      |
 | kafka (EXTERNAL)      | 127.0.0.1:9094 | 9094      |
-| postgres-auth         | 5433           | 5432      |
-| postgres-product      | 5434           | 5432      |
-| postgres-order        | 5435           | 5432      |
-| postgres-notification | 5436           | 5432      |
+| postgres-auth         | 127.0.0.1:5433 | 5432      |
+| postgres-product      | 127.0.0.1:5434 | 5432      |
+| postgres-order        | 127.0.0.1:5435 | 5432      |
+| postgres-notification | 127.0.0.1:5436 | 5432      |
 
 ---
 
@@ -239,10 +250,16 @@ order- and notification-service don't use `InvalidEventException` yet
 - PostgreSQL 16
 - Lombok
 
+**AI service:**
+
+- Python 3.13, FastAPI, Pydantic, httpx
+- Groq API (`openai/gpt-oss-20b`), official `groq` SDK, tool use
+- pytest (fake LLM, `httpx.MockTransport`, FastAPI `TestClient`)
+
 **Frontend:**
 
-- React 18, Vite 8
-- React Router v6
+- React 19, Vite 8
+- React Router v7
 - Axios (with interceptors)
 - TailwindCSS 3
 - Context API (AuthContext, CartContext)
@@ -290,7 +307,8 @@ docker compose up -d
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------- |
 | `build-backend` (matrix × 6) | Compiles + runs unit tests for eureka-server, api-gateway, auth-service, product-service, order-service, notification-service | ~30s          |
 | `build-frontend`             | `npm ci` + `vite build`                                                                                                       | ~15s (cached) |
-| `notify`                     | Runs only on push to `main` after both above pass. Publishes `deployment-signal` artifact with the commit SHA.                | ~5s           |
+| `test-ai-service`            | Python 3.13, `pip install -r requirements-dev.txt`, `pytest` (14 tests, fake LLM, no API key), then `docker build`            | ~40s          |
+| `notify`                     | Runs only on push to `main` after all jobs above pass. Publishes `deployment-signal` artifact with the commit SHA.            | ~5s           |
 
 **Continuous deployment** runs on the VM (`ubuntu73`) via a polling script + cron:
 

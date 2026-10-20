@@ -1,11 +1,13 @@
 # 🛒 E-Commerce Microservices Platform
 
-A production-shaped e-commerce platform built with **Spring Boot 4 + Spring Cloud + React 18**, featuring 6 microservices with service discovery, API gateway, JWT authentication, role-based access control, **event-driven communication with Apache Kafka**, and full Docker orchestration.
+A production-shaped e-commerce platform built with **Spring Boot 4 + Spring Cloud + React 19**, featuring 6 Spring Boot microservices with service discovery, API gateway, JWT authentication, role-based access control, **event-driven communication with Apache Kafka**, an **AI shopping assistant** (Python/FastAPI, LLM tool use) and full Docker orchestration.
 
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-brightgreen)
 ![Spring Cloud](https://img.shields.io/badge/Spring%20Cloud-2025.1.3-blue)
 ![Java](https://img.shields.io/badge/Java-21-orange)
-![React](https://img.shields.io/badge/React-18-61dafb)
+![Python](https://img.shields.io/badge/Python-3.13-3776ab)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.146-009688)
+![React](https://img.shields.io/badge/React-19-61dafb)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ed)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)
 ![Apache Kafka](<https://img.shields.io/badge/Apache%20Kafka-3.9%20(KRaft)-231f20>)
@@ -36,6 +38,12 @@ A production-shaped e-commerce platform built with **Spring Boot 4 + Spring Clou
 | -------------------------------------------------------- | ------------------------------------------------------- | --- |
 | ![Status](docs/screenshots/06-seller-product-status.png) | ![Notifications](docs/screenshots/16-notifications.png) |     |
 
+### AI Shopping Assistant
+
+The assistant answers with real shop data (tool use), in the user's language:
+
+![AI Shopping Assistant](docs/screenshots/17-ai-assistant.png)
+
 ### Infrastructure & Observability
 
 | Eureka Dashboard                          | Grafana (JVM Metrics)                                 | Prometheus Targets                                        |
@@ -52,7 +60,9 @@ A production-shaped e-commerce platform built with **Spring Boot 4 + Spring Clou
 
 ![Runtime Architecture](docs/diagrams/architecture.svg)
 
-**6 Spring Boot services** behind an **API Gateway**, all registered with **Eureka** for service discovery. Each service owns its own **PostgreSQL** database (database-per-service pattern). Services talk to each other through **Apache Kafka** events (see [Event-Driven Communication](#-event-driven-communication-apache-kafka)). The frontend is a React SPA served by nginx, which proxies `/api/*` to the gateway.
+**6 Spring Boot services** behind an **API Gateway**, all registered with **Eureka** for service discovery. Each service owns its own **PostgreSQL** database (database-per-service pattern). Services talk to each other through **Apache Kafka** events (see [Event-Driven Communication](#-event-driven-communication-apache-kafka)). A **Python ai-service** sits behind the same gateway (see [AI Shopping Assistant](#-ai-shopping-assistant)). The frontend is a React SPA served by nginx, which proxies `/api/*` to the gateway.
+
+Only the gateway, the frontend and Grafana are published to the network. Every other host port is bound to `127.0.0.1`: the services trust the gateway's identity headers, so nothing else may reach them from outside.
 
 | Service                  | Port | Purpose                                                                 | Database                    |
 | ------------------------ | ---- | ----------------------------------------------------------------------- | --------------------------- |
@@ -62,6 +72,7 @@ A production-shaped e-commerce platform built with **Spring Boot 4 + Spring Clou
 | **product-service**      | 8083 | Product CRUD (SELLER), browse/search (all), stock reservation via Kafka | postgres-product :5434      |
 | **order-service**        | 8084 | Order placement, history, seller management                             | postgres-order :5435        |
 | **notification-service** | 8085 | Stock alerts for sellers: in-app notifications + email                  | postgres-notification :5436 |
+| **ai-service** (Python)  | 8086 | AI shopping assistant: FastAPI + LLM tool use (Groq)                    | — (stateless)               |
 | **kafka**                | 9094 | Event broker (KRaft mode, no Zookeeper); host port bound to 127.0.0.1   | —                           |
 | **frontend**             | 5173 | React SPA                                                               | —                           |
 | **prometheus**           | 9090 | Metrics collection & time-series storage                                | —                           |
@@ -89,8 +100,9 @@ docker compose up -d
 >
 > - `JWT_SECRET` must be **at least 32 characters** (HS256), otherwise auth-service and the gateway will not start.
 > - Registration sends a confirmation email: put your **Mailtrap** sandbox credentials (or your own SMTP account) in `MAILTRAP_USERNAME` / `MAILTRAP_PASSWORD`.
+> - The AI assistant needs a (free) **Groq** API key from [console.groq.com](https://console.groq.com) in `GROQ_API_KEY`; without it, ai-service stops at startup.
 
-The first start builds all 7 images (Maven downloads included), which takes about **10–20 minutes**; later starts reuse the cached images. The stack has 14 containers, and the Java services need 2–3 minutes until `docker compose ps` shows them all as **healthy**. Then:
+The first start builds all 8 images (Maven downloads included), which takes about **10–20 minutes**; later starts reuse the cached images. The stack has 15 containers, and the Java services need 2–3 minutes until `docker compose ps` shows them all as **healthy**. Then:
 
 | Service                | URL                                                                  |
 | ---------------------- | -------------------------------------------------------------------- |
@@ -103,6 +115,7 @@ The first start builds all 7 images (Maven downloads included), which takes abou
 | ❤️ Product Health      | http://localhost:8083/actuator/health                                |
 | ❤️ Order Health        | http://localhost:8084/actuator/health                                |
 | ❤️ Notification Health | http://localhost:8085/actuator/health                                |
+| 🤖 AI Service (Swagger) | http://localhost:8086/docs                                          |
 
 ### Watch the Kafka events live
 
@@ -146,7 +159,7 @@ Every service exposes `/actuator/prometheus` via Micrometer. Prometheus discover
 
 ![CI/CD Pipeline](docs/diagrams/cicd-pipeline.svg)
 
-**GitHub Actions** runs on every push to `main`: builds all 6 Spring Boot services in parallel (matrix strategy), runs unit tests, and builds the frontend. When everything is green, a `notify` job publishes a deployment signal artifact.
+**GitHub Actions** runs on every push to `main`: builds all 6 Spring Boot services in parallel (matrix strategy), runs unit tests, runs the ai-service **pytest** suite and builds its Docker image, and builds the frontend. When everything is green, a `notify` job publishes a deployment signal artifact.
 
 **Continuous deployment** runs on the deployment VM via a polling script + cron:
 
@@ -289,6 +302,68 @@ The remaining synchronous Feign call forwards `X-User-Id`/`X-User-Role` through 
 
 ---
 
+## 🤖 AI Shopping Assistant
+
+A chat window in the shop (for logged-in users) answers questions with **real shop data**, for example "Do you have a laptop under $800?" or "What did I buy in my 7th order?". It is a separate **Python / FastAPI** service, `ai-service`, using an LLM on **Groq** (`openai/gpt-oss-20b`) with **tool use**: the model decides _which_ lookup it needs, ai-service runs it against product-service or order-service and sends the result back, until the model writes the answer.
+
+```mermaid
+sequenceDiagram
+    participant B as Browser (chat panel)
+    participant G as api-gateway
+    participant A as ai-service
+    participant L as Groq (LLM)
+    participant S as product- / order-service
+    B->>G: POST /api/ai/chat (JWT, message, history)
+    G->>A: + trusted X-User-Id / X-User-Role
+    A->>L: system prompt (per role) + history + message + tool list
+    L-->>A: run search_products(keyword="laptop", max_price=800)
+    A->>S: GET /products/search?q=laptop
+    S-->>A: products
+    A->>L: tool result (only the fields the model needs)
+    L-->>A: final answer (Markdown)
+    A-->>B: reply (Markdown text)
+```
+
+| Tool                       | For       | The model chooses                    | The code decides                                                |
+| -------------------------- | --------- | ------------------------------------ | --------------------------------------------------------------- |
+| `search_products`          | everyone  | a keyword, an optional maximum price | only id, name, price, stock and category reach the model        |
+| `get_my_orders`            | customers | how many recent orders (1–10)        | **whose** orders: always the gateway's user id                  |
+| `get_my_order_by_position` | customers | "my 7th order", "my last order"      | **whose** orders                                                |
+| `get_order_by_number`      | customers | the number shown as "Order #41"      | **whose** orders; order-service also checks ownership           |
+
+A bare "order 2" is ambiguous (the 2nd order, or "Order #2"?), so the assistant asks before looking it up.
+
+### Security: the model chooses _what_, never _who_
+
+- **The user id never passes through the model.** No tool has a `user_id` parameter: ai-service injects the gateway's user into the tool call, and a smuggled argument fails.
+- **Tools per role**, checked twice: only the allowed tools are offered, and the dispatcher refuses any other name. The system prompt is built per role, so it never names a tool the user does not have.
+- **Tool results are data, not instructions.** Product names come from sellers and may contain injected instructions; read-only tools scoped to the current user limit what a tricked model could do.
+- **No probing**: a foreign order (403) and a missing order (404) give the same answer.
+- Requests without gateway headers get **403**; port 8086 is bound to `127.0.0.1`.
+- **The chat history comes from the browser and is untrusted**: only `user` / `assistant` roles (no forged `system` or `tool` messages), at most 10 turns.
+- The chat panel renders Markdown **without raw HTML, images or links**: no XSS, no data leaving through an image URL, no phishing links.
+
+### Reliability & cost
+
+- **Provider failures** (timeout, 4xx, 429, 5xx) become **503** with a friendly message; the details go only to the log.
+- **Time limits shrink from the outside in**: nginx 60 s › browser 45 s › whole chat 40 s › one Groq call at most 15 s (never more than the budget has left, no automatic retries) › one tool call 5 s. A hanging provider ends in our own 503, not in nginx's 504 page.
+- At most **5 tool rounds** per message.
+- **Rate limit**: 10 messages per user per minute (sliding window) → **429** with `Retry-After`; a blocked message never reaches the LLM.
+- **Provider adapter**: only `llm.py` knows Groq, so another provider means changing one file.
+
+### Tests
+
+14 **pytest** tests run in under a second with a fake Groq and fake services (`httpx.MockTransport`): no network, no API key, no tokens. They cover the tool loop, roles, history rules, timeouts, 503 and 429, and run in CI on every push:
+
+```bash
+cd ai-service
+python -m venv .venv && source .venv/bin/activate   # Windows Git Bash: source .venv/Scripts/activate
+pip install -r requirements-dev.txt
+python -m pytest -v
+```
+
+---
+
 ## 🛠️ Tech Stack
 
 **Backend**
@@ -306,14 +381,22 @@ The remaining synchronous Feign call forwards `X-User-Id`/`X-User-Role` through 
 - Apache Kafka 3.9 (KRaft) + Spring for Apache Kafka
 - Spring Mail (Mailtrap sandbox)
 
+**AI service**
+
+- Python 3.13, FastAPI, Pydantic
+- Groq API (`openai/gpt-oss-20b`) with tool use, official `groq` SDK
+- httpx (shared client with timeouts)
+- pytest (fake LLM, `httpx.MockTransport`, FastAPI `TestClient`)
+
 **Frontend**
 
-- React 18 + Vite 8
-- React Router v6
+- React 19 + Vite 8
+- React Router v7
 - Axios (interceptors for JWT + auto-refresh)
 - TailwindCSS 3
 - Context API (AuthContext, CartContext)
 - Notification bell with unread badge (polls every 30 s)
+- AI chat panel with safe Markdown rendering (react-markdown + remark-gfm)
 
 **Infrastructure**
 
@@ -338,6 +421,7 @@ kh-ecommerce-microservices/
 ├── product-service/
 ├── order-service/
 ├── notification-service/
+├── ai-service/          (Python / FastAPI)
 ├── eureka-server/
 ├── frontend/
 ├── prometheus/
@@ -387,6 +471,10 @@ The user id always comes from the gateway's trusted `X-User-Id` header, never fr
 - `PATCH /api/notifications/{id}/read` — mark one as read (auth, own only; others answer 404)
 - `PATCH /api/notifications/mine/read-all` — mark all as read (auth)
 
+### AI assistant
+
+- `POST /api/ai/chat` — body `{"message": "...", "history": [{"role": "user" | "assistant", "content": "..."}]}` (auth; 429 after 10 messages per minute, 503 when the LLM is unavailable)
+
 ---
 
 ## 🎓 Design Decisions
@@ -407,6 +495,11 @@ The user id always comes from the gateway's trusted `X-User-Id` header, never fr
 14. **Idempotent consumers** — Kafka delivers at least once, so every consumer tolerates duplicates
 15. **Compacted topic as a lookup table** — `user-registered` keeps the latest contact per user, so a consumer can rebuild its copy from the beginning
 16. **Threshold crossing, not level** — stock alerts fire once when crossing a line, not on every sale below it
+17. **Tool use instead of free text** — the facts come from the services; the model only chooses the lookup and phrases the answer
+18. **Identity next to the model, never through it** — the model may choose _what_ to look up, the code alone decides _whose_ data
+19. **Stateless chat** — the browser keeps the conversation and sends it along, like the JWT keeps the session
+20. **Timeouts shrink inward** — the innermost layer that knows what failed answers first, with a clear message
+21. **The right language per service** — the AI service is Python (the AI ecosystem's language) behind the same gateway; it uses a fixed URL instead of Eureka, since its bottleneck is the LLM's rate limit, not CPU
 
 ---
 
@@ -417,8 +510,12 @@ The user id always comes from the gateway's trusted `X-User-Id` header, never fr
 - [x] Kafka event bus + notification-service (in-app + email stock alerts)
 - [x] Choreography saga for order placement (reserve stock or cancel the order)
 - [x] Kafka retries with exponential backoff + dead-letter topics
+- [x] AI shopping assistant (Python/FastAPI, LLM tool use, chat panel, rate limit, pytest in CI)
+- [x] Internal ports bound to `127.0.0.1` (only gateway, frontend and Grafana are public)
+- [ ] Gateway hardening before going public: explicit routes only (no Eureka auto-routes), management endpoints on an internal port
 - [ ] Transactional outbox (no lost event if Kafka is unreachable right after a commit)
 - [ ] Public URL / cloud deployment (Oracle Cloud free tier)
+- [ ] Seller tools for the assistant (low stock, incoming orders)
 - [ ] Kafka security (SASL authentication + ACLs)
 - [ ] Push notifications (WebSocket / Server-Sent Events) instead of polling
 - [ ] Admin panel
