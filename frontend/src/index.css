@@ -5,3 +5,27 @@
 body {
   @apply bg-gray-50 text-gray-900;
 }
+
+/* Tables, lists and bold text inside the assistant's answers (Tailwind resets them). */
+.chat-markdown p {
+  @apply my-1;
+}
+.chat-markdown ul {
+  @apply my-1 list-disc pl-5;
+}
+.chat-markdown ol {
+  @apply my-1 list-decimal pl-5;
+}
+.chat-markdown strong {
+  @apply font-semibold;
+}
+.chat-markdown table {
+  @apply my-2 w-full border-collapse text-xs;
+}
+.chat-markdown th,
+.chat-markdown td {
+  @apply border border-gray-300 px-2 py-1 text-left;
+}
+.chat-markdown th {
+  @apply bg-gray-200;
+}
