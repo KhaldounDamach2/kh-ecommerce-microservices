@@ -512,7 +512,7 @@ The user id always comes from the gateway's trusted `X-User-Id` header, never fr
 - [x] Kafka retries with exponential backoff + dead-letter topics
 - [x] AI shopping assistant (Python/FastAPI, LLM tool use, chat panel, rate limit, pytest in CI)
 - [x] Internal ports bound to `127.0.0.1` (only gateway, frontend and Grafana are public)
-- [ ] Gateway hardening before going public: explicit routes only (no Eureka auto-routes), management endpoints on an internal port
+- [x] Gateway hardening: explicit routes only (no Eureka auto-routes), management endpoints on internal port 9080 (not published)
 - [ ] Transactional outbox (no lost event if Kafka is unreachable right after a commit)
 - [ ] Public URL / cloud deployment (Oracle Cloud free tier)
 - [ ] Seller tools for the assistant (low stock, incoming orders)
