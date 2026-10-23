@@ -10,7 +10,7 @@ spring:
         webflux:
           discovery:
             locator:
-              enabled: true # auto-create routes from Eureka service names
+              enabled: false # only the routes written below exist (no automatic route per Eureka service)
               lower-case-service-id: true
 
           globalcors:
@@ -79,6 +79,8 @@ eureka:
     prefer-ip-address: true
 
 management:
+  server:
+    port: 9080 # management endpoints on their own port; 9080 is NOT published in docker-compose
   endpoints:
     web:
       exposure:
