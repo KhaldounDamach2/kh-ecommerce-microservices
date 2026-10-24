@@ -95,10 +95,10 @@ export default function IncomingOrders() {
   };
 
   const handleStatusUpdate = async (order) => {
+    // DELIVERED is not here: the customer confirms receipt.
     const nextStatus = {
       PENDING: "CONFIRMED",
       CONFIRMED: "SHIPPED",
-      SHIPPED: "DELIVERED",
     }[order?.status];
     if (!nextStatus) return;
 
@@ -170,12 +170,15 @@ export default function IncomingOrders() {
               const nextStatus = {
                 PENDING: "CONFIRMED",
                 CONFIRMED: "SHIPPED",
-                SHIPPED: "DELIVERED",
               }[order?.status];
               const actionLabel = {
                 PENDING: "Confirm Order",
                 CONFIRMED: "Mark as Shipped",
-                SHIPPED: "Mark as Delivered",
+              }[order?.status];
+              const waitingText = {
+                SHIPPED: "Waiting for the customer to confirm receipt",
+                DELIVERED: "Order complete",
+                CANCELLED: "Order cancelled",
               }[order?.status];
               const isUpdating = updatingOrderId === order?.id;
 
@@ -264,7 +267,7 @@ export default function IncomingOrders() {
                         {isUpdating ? "Updating..." : actionLabel}
                       </button>
                     ) : (
-                      <span className="py-2 text-gray-500">Order complete</span>
+                      <span className="py-2 text-gray-500">{waitingText}</span>
                     )}
                   </div>
                   {updateError && updateErrorOrderId === order?.id && (

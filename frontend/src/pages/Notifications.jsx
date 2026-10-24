@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   announceNotificationsChanged,
   getMyNotifications,
@@ -9,11 +10,20 @@ import {
 const typeStyle = {
   STOCK_LOW: "bg-yellow-100 text-yellow-800",
   STOCK_DEPLETED: "bg-red-100 text-red-800",
+  // Same colors as the order status badges
+  ORDER_CONFIRMED: "bg-blue-100 text-blue-800",
+  ORDER_SHIPPED: "bg-purple-100 text-purple-800",
+  ORDER_DELIVERED: "bg-green-100 text-green-800",
+  ORDER_CANCELLED: "bg-red-100 text-red-800",
 };
 
 const typeLabel = {
   STOCK_LOW: "Low stock",
   STOCK_DEPLETED: "Sold out",
+  ORDER_CONFIRMED: "Order confirmed",
+  ORDER_SHIPPED: "Order shipped",
+  ORDER_DELIVERED: "Order delivered",
+  ORDER_CANCELLED: "Order cancelled",
 };
 
 const fmtDate = (iso) =>
@@ -28,6 +38,7 @@ export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
     let cancelled = false;
@@ -55,13 +66,18 @@ export default function Notifications() {
     };
   }, []);
 
-  const handleMarkAsRead = async (notification) => {
-    if (notification.read) return;
-    await markAsRead(notification.id);
-    setNotifications((current) =>
-      current.map((n) => (n.id === notification.id ? { ...n, read: true } : n)),
-    );
-    announceNotificationsChanged();
+  // Mark as read, then an order notification opens its order.
+  const handleClick = async (notification) => {
+    if (!notification.read) {
+      await markAsRead(notification.id);
+      setNotifications((current) =>
+        current.map((n) => (n.id === notification.id ? { ...n, read: true } : n)),
+      );
+      announceNotificationsChanged();
+    }
+    if (notification.orderId) {
+      navigate(`/orders/${notification.orderId}`);
+    }
   };
 
   const handleMarkAllAsRead = async () => {
@@ -102,7 +118,7 @@ export default function Notifications() {
           {notifications.map((n) => (
             <li
               key={n.id}
-              onClick={() => handleMarkAsRead(n)}
+              onClick={() => handleClick(n)}
               className={`p-4 rounded-lg border cursor-pointer ${
                 n.read ? "bg-white border-gray-200" : "bg-blue-50 border-blue-200"
               }`}

@@ -22,3 +22,9 @@ export const updateOrderStatus = (id, status) =>
   axiosInstance
     .patch(`/orders/${id}/status`, { status })
     .then((response) => response.data);
+
+// The customer signs for the parcel: SHIPPED -> DELIVERED.
+export const confirmReceipt = (id) =>
+  axiosInstance
+    .patch(`/orders/${id}/confirm-receipt`)
+    .then((response) => response.data);

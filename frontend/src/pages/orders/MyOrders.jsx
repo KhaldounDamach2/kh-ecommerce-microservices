@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { getMyOrders } from "../../api/orders";
+import { confirmReceipt, getMyOrders } from "../../api/orders";
 import { useAuth } from "../../context/AuthContext";
 
 const statusColor = {
@@ -40,6 +40,8 @@ export default function MyOrders() {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
+  const [confirmingOrderId, setConfirmingOrderId] = useState(null);
+  const [confirmError, setConfirmError] = useState({ orderId: null, message: "" });
 
   useEffect(() => {
     if (authLoading || !isAuthenticated || user?.role !== "CUSTOMER") return;
@@ -91,6 +93,25 @@ export default function MyOrders() {
   if (user?.role !== "CUSTOMER") return <Navigate to="/" replace />;
 
   const retry = () => setRetryCount((count) => count + 1);
+
+  const handleConfirmReceipt = async (orderId) => {
+    setConfirmError({ orderId: null, message: "" });
+    setConfirmingOrderId(orderId);
+    try {
+      // The server answers with the updated order: swap it into the list.
+      const updated = await confirmReceipt(orderId);
+      setOrders((current) => current.map((o) => (o.id === orderId ? updated : o)));
+    } catch (requestError) {
+      setConfirmError({
+        orderId,
+        message:
+          requestError?.response?.data?.message ||
+          "Unable to confirm receipt. Please try again.",
+      });
+    } finally {
+      setConfirmingOrderId(null);
+    }
+  };
 
   return (
     <main className="container mx-auto px-4 py-8 max-w-4xl">
@@ -176,14 +197,30 @@ export default function MyOrders() {
                     )}
                   </div>
 
-                  <div className="mt-5 border-t pt-4">
+                  <div className="mt-5 border-t pt-4 flex flex-wrap items-center justify-between gap-3">
                     <Link
                       to={`/orders/${order?.id}`}
                       className="text-blue-600 hover:text-blue-800 font-medium"
                     >
                       View Details
                     </Link>
+                    {/* Only a shipped parcel can be signed for; the server checks it again. */}
+                    {order?.status === "SHIPPED" && (
+                      <button
+                        type="button"
+                        onClick={() => handleConfirmReceipt(order.id)}
+                        disabled={confirmingOrderId === order.id}
+                        className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50"
+                      >
+                        {confirmingOrderId === order.id ? "Confirming..." : "Confirm receipt"}
+                      </button>
+                    )}
                   </div>
+                  {confirmError.orderId === order?.id && (
+                    <p className="mt-2 text-sm text-red-600" role="alert">
+                      {confirmError.message}
+                    </p>
+                  )}
                 </article>
               );
             })}

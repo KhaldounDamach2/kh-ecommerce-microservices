@@ -255,7 +255,8 @@ export default function OrderDetail() {
           <StatusBadge status={order.status} />
         </div>
         <p className="mt-2">
-          Sellers can update order status from the seller page.
+          Sellers confirm and ship orders from the seller page; the customer
+          confirms receipt from My Orders.
         </p>
       </section>
     </main>

@@ -1,20 +1,26 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { getUnreadCount, NOTIFICATIONS_CHANGED } from "../api/notifications";
 
 const POLL_INTERVAL_MS = 30_000;
 
+const refreshCount = (setCount) =>
+  getUnreadCount()
+    .then(setCount)
+    .catch(() => {});
+
 export default function NotificationBell() {
   const [count, setCount] = useState(0);
+  const { pathname } = useLocation();
+
+  // Also look on every page change, so a missed poll is never 30 s stale.
+  useEffect(() => {
+    refreshCount(setCount);
+  }, [pathname]);
 
   useEffect(() => {
-    const refresh = () => {
-      getUnreadCount()
-        .then(setCount)
-        .catch(() => {});
-    };
+    const refresh = () => refreshCount(setCount);
 
-    refresh();
     const timer = setInterval(refresh, POLL_INTERVAL_MS);
     window.addEventListener(NOTIFICATIONS_CHANGED, refresh);
 
