@@ -97,10 +97,20 @@ main() {
   git reset --quiet --hard "$signal_commit" # exactly the commit CI tested
 
   # Build while the old containers keep serving: the slow part causes no downtime.
-  if ! docker compose build --quiet; then
-    log "BUILD FAILED for ${signal_commit}; running containers were not touched. Will retry."
-    exit 1
-  fi
+  # One image at a time: unchanged images come from the cache in a second, and the memory
+  # peak stays at one Maven build next to the running shop (parallel builds failed on the
+  # 7 GB VM). The full output is kept only when a build fails.
+  local service build_output
+  build_output=$(mktemp)
+  for service in $(docker compose config --services); do
+    if ! docker compose --progress plain build "$service" >"$build_output" 2>&1; then
+      tail -n 40 "$build_output"
+      rm -f "$build_output"
+      log "BUILD FAILED for ${signal_commit} (${service}); running containers were not touched. Will retry."
+      exit 1
+    fi
+  done
+  rm -f "$build_output"
 
   # Replace only the containers whose image or configuration changed.
   docker compose up -d --remove-orphans
