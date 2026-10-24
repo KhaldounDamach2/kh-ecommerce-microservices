@@ -164,8 +164,7 @@ public class OrderService {
 
         OrderStatus currentStatus = order.getStatus();
         boolean allowedTransition = (currentStatus == OrderStatus.PENDING && newStatus == OrderStatus.CONFIRMED)
-                || (currentStatus == OrderStatus.CONFIRMED && newStatus == OrderStatus.SHIPPED)
-                || (currentStatus == OrderStatus.SHIPPED && newStatus == OrderStatus.DELIVERED);
+                || (currentStatus == OrderStatus.CONFIRMED && newStatus == OrderStatus.SHIPPED);
         if (!allowedTransition) {
             throw new InvalidOrderStatusException(
                     "Cannot transition from " + currentStatus + " to " + newStatus);
@@ -177,6 +176,29 @@ public class OrderService {
         log.info("Updated order {} status from {} to {} by seller {}",
                 orderId, currentStatus, newStatus, sellerId);
         return orderMapper.toOrderResponse(saved);
+    }
+
+    // Only the customer who placed the order can confirm that it arrived,
+    // and only once it has been shipped.
+    @Transactional
+    public OrderResponse confirmReceipt(Long orderId, Long customerId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + orderId));
+
+        if (!order.getCustomerId().equals(customerId)) {
+            throw new AccessDeniedException("Access denied");
+        }
+        if (order.getStatus() != OrderStatus.SHIPPED) {
+            throw new InvalidOrderStatusException(
+                    "Only a shipped order can be confirmed as received (current status: " + order.getStatus() + ")");
+        }
+
+        order.setStatus(OrderStatus.DELIVERED);
+        Order saved = orderRepository.save(order);
+        publishStatusChanged(saved, null);
+        log.info("Customer {} confirmed receipt of order {}", customerId, orderId);
+        return orderMapper.toOrderResponse(saved);
+
     }
 
     // Cancel the order if it has been rejected

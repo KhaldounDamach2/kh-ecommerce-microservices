@@ -74,6 +74,15 @@ public class OrderController {
         return orderService.updateStatus(id, request, userId);
     }
 
+    // The customer signs for the parcel: SHIPPED -> DELIVERED.
+    @PatchMapping("/{id}/confirm-receipt")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public OrderResponse confirmReceipt(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Id") Long userId) {
+        return orderService.confirmReceipt(id, userId);
+    }
+
     private Pageable pageable(int page, int size) {
         return PageRequest.of(page, size, Sort.by("createdAt").descending());
     }
