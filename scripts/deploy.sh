@@ -98,7 +98,7 @@ main() {
 
   # Build while the old containers keep serving: the slow part causes no downtime.
   if ! docker compose build --quiet; then
-    log "BUILD FAILED for ${signal_commit}; the old containers keep running. Will retry."
+    log "BUILD FAILED for ${signal_commit}; running containers were not touched. Will retry."
     exit 1
   fi
 

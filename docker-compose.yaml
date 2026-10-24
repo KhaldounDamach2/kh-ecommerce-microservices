@@ -163,6 +163,8 @@ services:
       SPRING_PROFILES_ACTIVE: ""
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
       JWT_SECRET: ${JWT_SECRET}
+      # Which browser origins may call the API (the shop's public address); see .env.example.
+      CORS_ALLOWED_ORIGIN_PATTERNS: ${CORS_ALLOWED_ORIGIN_PATTERNS:-http://localhost:5173}
       JAVA_OPTS: "-XX:+UseSerialGC -Xms256m -Xmx512m -XX:TieredStopAtLevel=1 -noverify"
     depends_on:
       eureka-server:
@@ -200,6 +202,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       MAILTRAP_USERNAME: ${MAILTRAP_USERNAME}
       MAILTRAP_PASSWORD: ${MAILTRAP_PASSWORD}
+      FRONTEND_CONFIRM_URL: ${FRONTEND_CONFIRM_URL:-http://localhost:5173/confirm}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       JAVA_OPTS: "-XX:+UseSerialGC -Xms256m -Xmx512m -XX:TieredStopAtLevel=1 -noverify"
     depends_on:
@@ -384,6 +387,23 @@ services:
       - "5173:80"
     depends_on:
       api-gateway:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - ecommerce-net
+
+  # ============ PUBLIC TUNNEL (only where COMPOSE_PROFILES=tunnel is set) ============
+  # Cloudflare quick tunnel: gives the shop a public https://<random>.trycloudflare.com
+  # address without opening any port. Only the frontend (nginx) is exposed; nginx sends
+  # /api to the gateway. The address changes whenever this container restarts:
+  #   docker logs cloudflared 2>&1 | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com'
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.0
+    container_name: cloudflared
+    profiles: ["tunnel"]
+    command: tunnel --no-autoupdate --url http://frontend:80
+    depends_on:
+      frontend:
         condition: service_healthy
     restart: unless-stopped
     networks:

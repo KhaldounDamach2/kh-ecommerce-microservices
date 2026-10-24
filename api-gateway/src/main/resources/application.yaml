@@ -17,7 +17,9 @@ spring:
             add-to-simple-url-handler-mapping: true
             cors-configurations:
               "[/**]":
-                allowedOrigins: "http://localhost:5173"
+                # Comma-separated; patterns allow "*", e.g. https://*.trycloudflare.com for a
+                # quick tunnel whose address changes. Set per server in .env.
+                allowedOriginPatterns: "${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:5173}"
                 allowedMethods:
                   - GET
                   - POST

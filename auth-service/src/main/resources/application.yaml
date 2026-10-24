@@ -64,7 +64,8 @@ app:
     access-token-expiration-ms: 900000
     refresh-token-expiration-ms: 604800000
   frontend:
-    confirm-url: http://localhost:5173/confirm
+    # The link in the confirmation email; set FRONTEND_CONFIRM_URL to the public address.
+    confirm-url: ${FRONTEND_CONFIRM_URL:http://localhost:5173/confirm}
 
 management:
   endpoints:
