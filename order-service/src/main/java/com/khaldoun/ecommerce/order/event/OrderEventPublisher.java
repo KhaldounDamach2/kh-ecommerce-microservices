@@ -31,4 +31,22 @@ public class OrderEventPublisher {
                     }
                 });
     }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onOrderStatusChanged(OrderStatusChangedEvent event) {
+        // Key = orderId: all events of one order stay in order (same partition).
+        kafkaTemplate.send(KafkaTopicConfig.ORDER_STATUS_CHANGED_TOPIC, String.valueOf(event.orderId()), event)
+                .whenComplete((result, error) -> {
+                    if (error != null) {
+                        log.error("Failed to publish OrderStatusChangedEvent ({}) for order {}",
+                                event.newStatus(), event.orderId(), error);
+                    } else {
+                        log.info("Published OrderStatusChangedEvent ({}) for order {} to partition {} offset {}",
+                                event.newStatus(),
+                                event.orderId(),
+                                result.getRecordMetadata().partition(),
+                                result.getRecordMetadata().offset());
+                    }
+                });
+    }
 }

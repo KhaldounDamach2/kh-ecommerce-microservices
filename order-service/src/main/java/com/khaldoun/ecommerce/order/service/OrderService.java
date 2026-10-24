@@ -34,6 +34,7 @@ import com.khaldoun.ecommerce.order.mapper.OrderMapper;
 import com.khaldoun.ecommerce.order.repository.OrderItemRepository;
 import com.khaldoun.ecommerce.order.repository.OrderRepository;
 import com.khaldoun.ecommerce.order.event.OrderCreatedEvent;
+import com.khaldoun.ecommerce.order.event.OrderStatusChangedEvent;
 
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
@@ -172,6 +173,7 @@ public class OrderService {
 
         order.setStatus(newStatus);
         Order saved = orderRepository.save(order);
+        publishStatusChanged(saved, null);
         log.info("Updated order {} status from {} to {} by seller {}",
                 orderId, currentStatus, newStatus, sellerId);
         return orderMapper.toOrderResponse(saved);
@@ -184,8 +186,29 @@ public class OrderService {
             if (order.getStatus() == OrderStatus.PENDING) {
                 order.setStatus(OrderStatus.CANCELLED);
                 orderRepository.save(order);
+                publishStatusChanged(order, reason);
                 log.info("Order {} cancelled: {}", orderId, reason);
             }
         }, () -> log.warn("Stock result for unknown order {}, ignoring", orderId));
+    }
+
+    // Announces "order X is now <status>". Kafka sends it only after the
+    // commit (see OrderEventPublisher), so a rollback announces nothing.
+    private void publishStatusChanged(Order order, String reason) {
+        // distinct: one seller can have several items in the same order
+        List<Long> sellerIds = order.getItems().stream()
+                .map(OrderItem::getSellerId)
+                .distinct()
+                .toList();
+
+        eventPublisher.publishEvent(new OrderStatusChangedEvent(
+                UUID.randomUUID(),
+                order.getId(),
+                order.getCustomerId(),
+                sellerIds,
+                order.getStatus().name(),
+                reason,
+                order.getTotalPrice(),
+                Instant.now()));
     }
 }

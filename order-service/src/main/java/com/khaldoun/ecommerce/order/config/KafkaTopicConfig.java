@@ -9,12 +9,21 @@ import org.springframework.context.annotation.Configuration;
 public class KafkaTopicConfig {
 
     public static final String ORDER_CREATED_TOPIC = "order-created";
+    public static final String ORDER_STATUS_CHANGED_TOPIC = "order-status-changed";
     public static final String STOCK_RESULT_TOPIC = "stock-result";
     public static final String STOCK_RESULT_DLT = "stock-result-dlt";
 
     @Bean
     NewTopic orderCreatedTopic() {
         return TopicBuilder.name(ORDER_CREATED_TOPIC)
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    NewTopic orderStatusChangedTopic() {
+        return TopicBuilder.name(ORDER_STATUS_CHANGED_TOPIC)
                 .partitions(3)
                 .replicas(1)
                 .build();
