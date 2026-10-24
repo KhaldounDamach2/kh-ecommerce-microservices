@@ -30,7 +30,8 @@ public class Notification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Who should see it (the seller, for stock bells)
+    // Who should see it (the seller for stock bells, the customer or the
+    // seller for order bells)
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
@@ -46,6 +47,9 @@ public class Notification {
 
     @Column(name = "product_id")
     private Long productId;
+
+    @Column(name = "order_id")
+    private Long orderId;
 
     @Column(name = "is_read", nullable = false)
     private boolean read;

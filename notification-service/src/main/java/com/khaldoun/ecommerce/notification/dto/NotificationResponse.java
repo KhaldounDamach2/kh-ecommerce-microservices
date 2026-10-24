@@ -11,6 +11,7 @@ public record NotificationResponse(
         String title,
         String message,
         Long productId,
+        Long orderId,
         boolean read,
         LocalDateTime createdAt) {
 
@@ -21,6 +22,7 @@ public record NotificationResponse(
                 notification.getTitle(),
                 notification.getMessage(),
                 notification.getProductId(),
+                notification.getOrderId(),
                 notification.isRead(),
                 notification.getCreatedAt());
     }

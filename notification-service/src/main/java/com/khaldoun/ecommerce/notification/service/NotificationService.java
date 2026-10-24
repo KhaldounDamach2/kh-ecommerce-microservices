@@ -10,6 +10,7 @@ import com.khaldoun.ecommerce.notification.exception.NotificationNotFoundExcepti
 import com.khaldoun.ecommerce.notification.domain.Notification;
 import com.khaldoun.ecommerce.notification.domain.NotificationType;
 import com.khaldoun.ecommerce.notification.domain.ProcessedEvent;
+import com.khaldoun.ecommerce.notification.event.OrderStatusChangedEvent;
 import com.khaldoun.ecommerce.notification.event.StockLevelEvent;
 import com.khaldoun.ecommerce.notification.repository.NotificationRepository;
 import com.khaldoun.ecommerce.notification.repository.ProcessedEventRepository;
@@ -71,6 +72,63 @@ public class NotificationService {
                 .ifPresentOrElse(
                         contact -> emailService.send(contact.getEmail(), title, message),
                         () -> log.info("No email known for seller {}, in-app only", event.sellerId()));
+    }
+
+    // The customer hears about CONFIRMED, SHIPPED and CANCELLED; each seller of
+    // the order hears about DELIVERED.
+    @Transactional
+    public void notifyAboutOrderStatus(OrderStatusChangedEvent event) {
+        if (event.eventId() == null || event.orderId() == null || event.customerId() == null
+                || event.sellerIds() == null || event.newStatus() == null) {
+            log.warn("Ignoring invalid order status event: {}", event);
+            return;
+        }
+        if (processedEventRepository.existsById(event.eventId())) {
+            log.info("Event {} already processed, skipping", event.eventId());
+            return;
+        }
+
+        Long orderId = event.orderId();
+        switch (event.newStatus()) {
+            case "CONFIRMED" -> notifyUser(event.customerId(), NotificationType.ORDER_CONFIRMED,
+                    "Order #" + orderId + " confirmed",
+                    "The seller confirmed your order #" + orderId + " ($" + event.totalPrice() + ").",
+                    orderId);
+            case "SHIPPED" -> notifyUser(event.customerId(), NotificationType.ORDER_SHIPPED,
+                    "Order #" + orderId + " shipped",
+                    "Your order #" + orderId + " is on its way.",
+                    orderId);
+            case "CANCELLED" -> notifyUser(event.customerId(), NotificationType.ORDER_CANCELLED,
+                    "Order #" + orderId + " cancelled",
+                    "Your order #" + orderId + " was cancelled: " + event.reason(),
+                    orderId);
+            case "DELIVERED" -> event.sellerIds().forEach(sellerId -> notifyUser(sellerId,
+                    NotificationType.ORDER_DELIVERED,
+                    "Order #" + orderId + " delivered",
+                    "The customer received order #" + orderId + ".",
+                    orderId));
+            default -> log.info("No notification for status {} of order {}", event.newStatus(), orderId);
+        }
+        processedEventRepository.save(new ProcessedEvent(event.eventId()));
+
+    }
+
+    // One bell + one email (if we know the address) for one person.
+    private void notifyUser(Long userId, NotificationType type, String title, String message, Long orderId) {
+        notificationRepository.save(Notification.builder()
+                .userId(userId)
+                .type(type)
+                .title(title)
+                .message(message)
+                .orderId(orderId)
+                .build());
+        log.info("Saved {} notification for user {}", type, userId);
+
+        userContactRepository.findById(userId)
+                .ifPresentOrElse(
+                        contact -> emailService.send(contact.getEmail(), title, message),
+                        () -> log.info("No email known for user {}, in-app only", userId));
+
     }
 
     @Transactional(readOnly = true)

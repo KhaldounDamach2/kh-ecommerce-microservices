@@ -14,6 +14,8 @@ public class KafkaTopicConfig {
     public static final String STOCK_LOW_DLT = "stock-low-dlt";
     public static final String STOCK_DEPLETED_DLT = "stock-depleted-dlt";
     public static final String USER_REGISTERED_DLT = "user-registered-dlt";
+    public static final String ORDER_STATUS_CHANGED_TOPIC = "order-status-changed";
+    public static final String ORDER_STATUS_CHANGED_DLT = "order-status-changed-dlt";
 
     // Same definitions as product-service: safe and idempotent, and it means
     // the listener never starts against a missing topic.
@@ -43,6 +45,15 @@ public class KafkaTopicConfig {
                 .build();
     }
 
+    // Same definition as order-service.
+    @Bean
+    NewTopic orderStatusChangedTopic() {
+        return TopicBuilder.name(ORDER_STATUS_CHANGED_TOPIC)
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
     // Dead-letter topics ("returned mail"): same partition count as the
     // originals, because a failed message keeps its partition number.
     @Bean
@@ -64,6 +75,14 @@ public class KafkaTopicConfig {
     @Bean
     NewTopic userRegisteredDltTopic() {
         return TopicBuilder.name(USER_REGISTERED_DLT)
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    NewTopic orderStatusChangedDltTopic() {
+        return TopicBuilder.name(ORDER_STATUS_CHANGED_DLT)
                 .partitions(3)
                 .replicas(1)
                 .build();
