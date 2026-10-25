@@ -23,10 +23,11 @@ Fully dockerized.
 | **auth-service**         | 8081 | Register, login, JWT issue/refresh, email confirmation                  | postgres-auth :5433         |
 | **product-service**      | 8083 | Product CRUD (SELLER), browse/search (all), stock reservation via Kafka | postgres-product :5434      |
 | **order-service**        | 8084 | Order placement, order history, seller order management                 | postgres-order :5435        |
-| **notification-service** | 8085 | Seller stock alerts: in-app notifications + Mailtrap email              | postgres-notification :5436 |
+| **notification-service** | 8085 | Stock alerts (sellers) + order status updates: in-app + email           | postgres-notification :5436 |
 | **ai-service** (Python)  | 8086 | AI shopping assistant: FastAPI + Groq LLM tool use, `POST /api/ai/chat` | — (stateless)               |
 | **kafka**                | 9094 | Event broker, KRaft mode (host port bound to 127.0.0.1)                 | —                           |
 | **frontend**             | 5173 | React SPA (auth, products, cart, orders, notification bell, AI chat)    | —                           |
+| **mailpit**              | 8025 | Local fake mail server (SMTP 1025), web inbox for all emails            | —                           |
 
 ---
 
@@ -54,7 +55,7 @@ Flow:
 
 **Registration flow:**
 
-1. POST /auth/register → save user (enabled=false) → send confirmation email (Mailtrap)
+1. POST /auth/register → save user (enabled=false) → send confirmation email (Mailpit locally)
 2. User clicks confirmation link → POST /auth/confirm → enabled=true → `user-registered` published to Kafka (after commit)
 3. Only enabled users can log in
 
@@ -96,14 +97,17 @@ Flow:
 
 PENDING → CONFIRMED → SHIPPED → DELIVERED
 
-Only seller can transition. Invalid transitions return 400.
+The seller confirms and ships (`PATCH /orders/{id}/status`); the customer confirms
+receipt (`PATCH /orders/{id}/confirm-receipt`, own order, SHIPPED only → DELIVERED).
+Invalid transitions return 400, someone else's order 403.
 PENDING → CANCELLED happens automatically when product-service rejects the stock
 reservation (`stock-result` with reserved=false).
+Every transition publishes `order-status-changed` after commit.
 
 ### notification-service
 
-- `processed_event` (event_id PK, processed_at): idempotency for stock events (V1)
-- `notifications` (id, user_id, type STOCK_LOW/STOCK_DEPLETED, title, message, product_id, is_read, created_at), index (user_id, is_read) (V2)
+- `processed_event` (event_id PK, processed_at): idempotency for stock and order events (V1)
+- `notifications` (id, user_id, type STOCK_LOW/STOCK_DEPLETED/ORDER_CONFIRMED/ORDER_SHIPPED/ORDER_CANCELLED/ORDER_DELIVERED, title, message, product_id, order_id (V4), is_read, created_at), index (user_id, is_read) (V2)
 - `user_contact` (user_id PK = auth user id, email, role, updated_at): local address book from `user-registered` (V3).
   Users confirmed before Step 9d are not in it (no backfill), so they get in-app alerts only.
 
@@ -121,6 +125,7 @@ reservation (`stock-result` with reserved=false).
 | ----------------- | -------------------------------------- | --------- | -------------------------------------------------------- |
 | `order-created`   | order-service → product-service        | orderId   | Reserve stock for a saved PENDING order                  |
 | `stock-result`    | product-service → order-service        | orderId   | reserved true/false + reason; rejected → order CANCELLED |
+| `order-status-changed` | order-service → notification-service | orderId | Fact "order X is now Y"; CONFIRMED/SHIPPED/CANCELLED → customer, DELIVERED → each seller |
 | `stock-low`       | product-service → notification-service | productId | Stock crossed above 3 → 1..3 (once per crossing)         |
 | `stock-depleted`  | product-service → notification-service | productId | Stock reached 0                                          |
 | `user-registered` | auth-service → notification-service    | userId    | Confirmed user contact (compacted topic = address book)  |
@@ -135,14 +140,15 @@ pills no longer block a partition), `DefaultErrorHandler` with 3 retries and
 exponential backoff (1 s, 2 s, 4 s), then `DeadLetterPublishingRecoverer` →
 `<topic>-dlt` (same partition, error details in `kafka_dlt-*` headers).
 DLT topics: order-created-dlt, stock-result-dlt, stock-low-dlt,
-stock-depleted-dlt, user-registered-dlt. product-service throws a non-retryable
+stock-depleted-dlt, user-registered-dlt, order-status-changed-dlt. product-service throws a non-retryable
 `InvalidEventException` for events without eventId/orderId. Replay = copy the
 message from the DLT back to the original topic (safe thanks to idempotency).
 
 Known gaps (planned): Kafka has no SASL/ACLs (network isolation only); if a
 send fails after commit the event is lost (outbox pattern would fix this);
 order- and notification-service don't use `InvalidEventException` yet
-(notification drops invalid events with a warning).
+(notification drops invalid events with a warning); a failed email is logged
+and lost, never retried (no email outbox).
 
 ---
 
@@ -162,12 +168,13 @@ order- and notification-service don't use `InvalidEventException` yet
 | `/products/:id`             | public   | Detail + Add to Cart             |
 | `/cart`                     | public   | Shopping cart (localStorage)     |
 | `/checkout`                 | CUSTOMER | Place order                      |
-| `/orders/mine`              | CUSTOMER | Order history                    |
+| `/orders/mine`              | CUSTOMER | Order history + Confirm receipt  |
 | `/orders/:id`               | any auth | Order detail                     |
 | `/seller/products`          | SELLER   | Manage own products              |
 | `/seller/products/new`      | SELLER   | Add product                      |
 | `/seller/products/:id/edit` | SELLER   | Edit product                     |
-| `/seller/orders`            | SELLER   | Incoming orders + status updates |
+| `/seller/orders`            | SELLER   | Incoming orders: confirm, ship   |
+| `/notifications`            | any auth | Bell list; order items open the order |
 | `/dashboard/customer`       | CUSTOMER | Customer dashboard               |
 | `/dashboard/seller`         | SELLER   | Seller dashboard                 |
 | `/dashboard/admin`          | ADMIN    | Admin dashboard                  |
@@ -200,13 +207,14 @@ order- and notification-service don't use `InvalidEventException` yet
 - 1 nginx-served React frontend
 - 1 Prometheus (metrics scraper, TSDB)
 - 1 Grafana (dashboards, provisioned datasource)
+- 1 Mailpit (local fake mail server, web inbox on 8025)
 
 ### Configuration
 
 - Secrets passed via **environment variables** (never baked into images)
 - `SPRING_PROFILES_ACTIVE=""` prevents `application-local.yaml` from loading in containers
 - **JWT_SECRET must be identical** between `api-gateway` and `auth-service`
-- Mail credentials (`MAILTRAP_USERNAME`, `MAILTRAP_PASSWORD`) on auth-service and notification-service
+- Mail server via `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_SMTP_AUTH`, `MAIL_SMTP_STARTTLS` on auth-service and notification-service; defaults = Mailpit (no login, no TLS)
 - Kafka clients use `SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092` in containers, `localhost:9094` from the IDE
 - ai-service needs `GROQ_API_KEY` (and optionally `GROQ_MODEL`) from `.env`; it stops at startup without a key
 
@@ -228,6 +236,7 @@ not be reachable from outside. On the VM, use an SSH tunnel (`ssh -L`) for Eurek
 | ai-service            | 127.0.0.1:8086 | 8086      |
 | eureka-server         | 127.0.0.1:8761 | 8761      |
 | prometheus            | 127.0.0.1:9090 | 9090      |
+| mailpit (inbox, SMTP) | 127.0.0.1:8025, 127.0.0.1:1025 | 8025, 1025 |
 | kafka (EXTERNAL)      | 127.0.0.1:9094 | 9094      |
 | postgres-auth         | 127.0.0.1:5433 | 5432      |
 | postgres-product      | 127.0.0.1:5434 | 5432      |

@@ -71,12 +71,13 @@ Only the gateway, the frontend and Grafana are published to the network. Every o
 | **auth-service**         | 8081 | Register, login, JWT issue/refresh, email confirmation                  | postgres-auth :5433         |
 | **product-service**      | 8083 | Product CRUD (SELLER), browse/search (all), stock reservation via Kafka | postgres-product :5434      |
 | **order-service**        | 8084 | Order placement, history, seller management                             | postgres-order :5435        |
-| **notification-service** | 8085 | Stock alerts for sellers: in-app notifications + email                  | postgres-notification :5436 |
+| **notification-service** | 8085 | Stock alerts for sellers, order status updates: in-app + email          | postgres-notification :5436 |
 | **ai-service** (Python)  | 8086 | AI shopping assistant: FastAPI + LLM tool use (Groq)                    | — (stateless)               |
 | **kafka**                | 9094 | Event broker (KRaft mode, no Zookeeper); host port bound to 127.0.0.1   | —                           |
 | **frontend**             | 5173 | React SPA                                                               | —                           |
 | **prometheus**           | 9090 | Metrics collection & time-series storage                                | —                           |
 | **grafana**              | 3000 | Metrics visualization & dashboards                                      | —                           |
+| **mailpit**              | 8025 | Local fake mail server: catches every email (SMTP on 1025)              | —                           |
 
 ---
 
@@ -125,7 +126,7 @@ docker exec -it kafka /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server localhost:9092 --topic stock-result --from-beginning --property print.key=true
 ```
 
-Place an order in the frontend and the stock-reservation reply appears in the terminal. The same works for `order-created`, `stock-low`, `stock-depleted` and `user-registered`.
+Place an order in the frontend and the stock-reservation reply appears in the terminal. The same works for `order-created`, `order-status-changed`, `stock-low`, `stock-depleted` and `user-registered`.
 
 ### Stop
 
@@ -241,7 +242,7 @@ This design works without a public tunnel or SSH secrets — the VM polls GitHub
 - `orders` (id, customer_id, total_price, status, timestamps)
 - `order_items` (id, order_id FK, product_id, product_name, product_image, seller_id, unit_price, quantity, subtotal)
 - **Snapshot pattern**: order items store product data at order time
-- **State machine**: PENDING → CONFIRMED → SHIPPED → DELIVERED; PENDING → CANCELLED when stock cannot be reserved
+- **State machine**: PENDING → CONFIRMED → SHIPPED (seller) → DELIVERED (the customer confirms receipt); PENDING → CANCELLED when stock cannot be reserved
 
 ### product-service / notification-service (Kafka consumers)
 
@@ -249,7 +250,7 @@ This design works without a public tunnel or SSH secrets — the VM polls GitHub
 
 ### notification-service
 
-- `notifications` (id, user_id, type, title, message, product_id, is_read, created_at) — index on (user_id, is_read)
+- `notifications` (id, user_id, type, title, message, product_id, order_id, is_read, created_at) — index on (user_id, is_read); stock alerts point to a product, order updates to an order
 - `user_contact` (user_id, email, role, updated_at) — local copy of contact data, filled from Kafka
 
 ---
@@ -263,9 +264,10 @@ flowchart LR
     O[order-service] -- order-created --> P[product-service]
     P -- stock-result --> O
     P -- "stock-low / stock-depleted" --> N[notification-service]
+    O -- order-status-changed --> N
     A[auth-service] -- "user-registered (compacted)" --> N
     N --> DB[(notifications<br/>user_contact)]
-    N --> M[Mailtrap email]
+    N --> M[Email via SMTP<br/>Mailpit locally]
     B[Browser 🔔] -- "GET /api/notifications/mine (polling)" --> G[api-gateway] --> N
 ```
 
@@ -273,6 +275,7 @@ flowchart LR
 | ----------------- | -------------------------------------- | --------- | -------------------------------------------------------------------- |
 | `order-created`   | order-service → product-service        | orderId   | An order was saved; reserve its stock                                |
 | `stock-result`    | product-service → order-service        | orderId   | Reserved or rejected (with reason); rejected orders become CANCELLED |
+| `order-status-changed` | order-service → notification-service | orderId | "Order X is now Y": CONFIRMED/SHIPPED/CANCELLED → customer, DELIVERED → each seller |
 | `stock-low`       | product-service → notification-service | productId | Stock crossed the threshold (above 3 → 1..3), rung once per crossing |
 | `stock-depleted`  | product-service → notification-service | productId | Stock reached 0                                                      |
 | `user-registered` | auth-service → notification-service    | userId    | A user confirmed their email; **compacted** topic (latest per user)  |
@@ -286,6 +289,19 @@ flowchart LR
 2. product-service checks **every line first**, then decrements all of them or none, and replies on `stock-result`.
 3. order-service cancels the order if the reservation was rejected.
 
+### Order status notifications
+
+Every status change is published on `order-status-changed` (after commit, key = orderId). The event only states the fact; notification-service decides whom to tell:
+
+| New status | Triggered by                                       | Notified (in-app + email)         |
+| ---------- | -------------------------------------------------- | --------------------------------- |
+| CONFIRMED  | seller                                             | customer                          |
+| SHIPPED    | seller                                             | customer                          |
+| CANCELLED  | automatic (stock rejected)                         | customer, with the reason         |
+| DELIVERED  | customer: "Confirm receipt" (own order, SHIPPED only) | each seller of the order (marketplace) |
+
+The bell in the navbar shows the unread count; clicking an order notification opens the order.
+
 ### Reliability & safety patterns
 
 - **Publish after commit**: events are sent only once the database transaction has committed.
@@ -293,7 +309,7 @@ flowchart LR
 - **Ordering by key**: messages are keyed by `orderId` / `productId` / `userId`, so events about one entity stay in order within their partition.
 - **Event-carried state transfer**: notification-service keeps its own `user_contact` table instead of calling auth-service, so emails keep working when auth-service is down.
 - **Defense in depth**: consumers validate every event (e.g. quantity must be > 0) and never trust a message blindly; the external Kafka listener is bound to `127.0.0.1` only.
-- **Best-effort side effects**: the in-app notification is saved first; a failing email is logged and never breaks event processing.
+- **Best-effort side effects**: the in-app notification is saved first; a failing email is logged and never breaks event processing. Known limitation: a failed email is not retried later (an email outbox would fix this).
 - **Retries with exponential backoff**: a failing message is retried after 1 s, 2 s and 4 s, so short outages (e.g. a database restart) heal by themselves.
 - **Dead-letter topics**: after the last retry, the message is parked in `<topic>-dlt` (same partition, exception details in the headers) instead of being lost. Once the cause is fixed, it can be replayed to the original topic; idempotent consumers make the replay safe.
 - **Poison-pill protection**: an `ErrorHandlingDeserializer` wraps the JSON deserializer, so unreadable messages go to the DLT instead of blocking their partition forever.
@@ -461,7 +477,8 @@ kh-ecommerce-microservices/
 - `GET /api/orders/mine` — customer's orders (CUSTOMER)
 - `GET /api/orders/seller` — incoming orders (SELLER)
 - `GET /api/orders/{id}` — detail (auth, ownership checked)
-- `PATCH /api/orders/{id}/status` — update status (SELLER)
+- `PATCH /api/orders/{id}/status` — CONFIRMED or SHIPPED (SELLER, own items)
+- `PATCH /api/orders/{id}/confirm-receipt` — SHIPPED → DELIVERED (CUSTOMER, own order)
 
 ### Notifications
 
@@ -501,6 +518,8 @@ The user id always comes from the gateway's trusted `X-User-Id` header, never fr
 19. **Stateless chat** — the browser keeps the conversation and sends it along, like the JWT keeps the session
 20. **Timeouts shrink inward** — the innermost layer that knows what failed answers first, with a clear message
 21. **The right language per service** — the AI service is Python (the AI ecosystem's language) behind the same gateway; it uses a fixed URL instead of Eureka, since its bottleneck is the LLM's rate limit, not CPU
+22. **Events state facts, consumers decide** — `order-status-changed` says "order X is now Y"; whom to notify is notification-service's decision, so new reactions need no change in order-service
+23. **Whoever holds the parcel signs for it** — DELIVERED is set by the customer, not the seller; the server checks owner and status again, whatever the UI shows
 
 ---
 
@@ -514,6 +533,11 @@ The user id always comes from the gateway's trusted `X-User-Id` header, never fr
 - [x] AI shopping assistant (Python/FastAPI, LLM tool use, chat panel, rate limit, pytest in CI)
 - [x] Internal ports bound to `127.0.0.1` (only gateway, frontend and Grafana are public)
 - [x] Gateway hardening: explicit routes only (no Eureka auto-routes), management endpoints on internal port 9080 (not published)
+- [x] Order status notifications (customer: confirmed/shipped/cancelled, sellers: delivered) + "Confirm receipt" by the customer
+- [x] Mailpit as local mail server; any SMTP server via `MAIL_*` variables
+- [ ] Automatic DELIVERED for orders shipped more than 14 days ago (scheduled job)
+- [ ] Retry failed emails later (email outbox)
+- [ ] Integration tests with Testcontainers (real PostgreSQL + Kafka)
 - [ ] Transactional outbox (no lost event if Kafka is unreachable right after a commit)
 - [ ] Public URL / cloud deployment (Oracle Cloud free tier)
 - [ ] Seller tools for the assistant (low stock, incoming orders)
