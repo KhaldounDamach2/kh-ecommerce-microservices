@@ -37,17 +37,19 @@ spring:
         enable.idempotence: true
         spring.json.add.type.headers: false
 
+  # The defaults fit Mailpit, the local fake mail server (no login, no TLS).
+  # A real SMTP account (Gmail, Brevo, ...) only needs other values in .env.
   mail:
-    host: sandbox.smtp.mailtrap.io
-    port: 2525
-    username: ${MAILTRAP_USERNAME}
-    password: ${MAILTRAP_PASSWORD}
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
-          auth: true
+          auth: ${MAIL_SMTP_AUTH:false}
           starttls:
-            enable: true
+            enable: ${MAIL_SMTP_STARTTLS:false}
 
 eureka:
   client:

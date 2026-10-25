@@ -99,10 +99,10 @@ docker compose up -d
 > **Before `docker compose up`:** set your own values in `.env`:
 >
 > - `JWT_SECRET` must be **at least 32 characters** (HS256), otherwise auth-service and the gateway will not start.
-> - Registration sends a confirmation email: put your **Mailtrap** sandbox credentials (or your own SMTP account) in `MAILTRAP_USERNAME` / `MAILTRAP_PASSWORD`.
+> - Emails (registration confirmation, notifications) need no setup: **Mailpit** catches them all locally, read them at http://localhost:8025. To send real emails, set the `MAIL_*` values (see `.env.example`).
 > - The AI assistant needs a (free) **Groq** API key from [console.groq.com](https://console.groq.com) in `GROQ_API_KEY`; without it, ai-service stops at startup.
 
-The first start builds all 8 images (Maven downloads included), which takes about **10–20 minutes**; later starts reuse the cached images. The stack has 15 containers, and the Java services need 2–3 minutes until `docker compose ps` shows them all as **healthy**. Then:
+The first start builds all 8 images (Maven downloads included), which takes about **10–20 minutes**; later starts reuse the cached images. The stack has 16 containers, and the Java services need 2–3 minutes until `docker compose ps` shows them all as **healthy**. Then:
 
 | Service                | URL                                                                  |
 | ---------------------- | -------------------------------------------------------------------- |
@@ -116,6 +116,7 @@ The first start builds all 8 images (Maven downloads included), which takes abou
 | ❤️ Order Health        | http://localhost:8084/actuator/health                                |
 | ❤️ Notification Health | http://localhost:8085/actuator/health                                |
 | 🤖 AI Service (Swagger) | http://localhost:8086/docs                                          |
+| ✉️ Mailpit (emails)     | http://localhost:8025                                               |
 
 ### Watch the Kafka events live
 
@@ -379,7 +380,7 @@ python -m pytest -v
 - Lombok
 - OpenFeign + Apache HC5
 - Apache Kafka 3.9 (KRaft) + Spring for Apache Kafka
-- Spring Mail (Mailtrap sandbox)
+- Spring Mail (Mailpit locally, any SMTP server via `MAIL_*`)
 
 **AI service**
 

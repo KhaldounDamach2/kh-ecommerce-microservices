@@ -47,19 +47,20 @@ spring:
       properties:
         spring.json.add.type.headers: false
 
-  # Same Mailtrap sandbox as auth-service. Empty defaults so the app still
-  # starts in the IDE without the variables (emails then just fail and are logged).
+  # Same mail server as auth-service. The defaults fit Mailpit, the local
+  # fake mail server (no login, no TLS); a real SMTP account only needs
+  # other values in .env. Without a mail server, emails fail and are logged.
   mail:
-    host: sandbox.smtp.mailtrap.io
-    port: 2525
-    username: ${MAILTRAP_USERNAME:}
-    password: ${MAILTRAP_PASSWORD:}
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
-          auth: true
+          auth: ${MAIL_SMTP_AUTH:false}
           starttls:
-            enable: true
+            enable: ${MAIL_SMTP_STARTTLS:false}
 
 eureka:
   client:
